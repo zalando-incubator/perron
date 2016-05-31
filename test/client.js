@@ -223,4 +223,13 @@ describe('ServiceClient', () => {
             });
         });
     });
+
+    describe('built-in filter', () => {
+        it('should return original response if all ok', () => {
+            [ServiceClient.treat4xxAsError, ServiceClient.treat5xxAsError].forEach(filter => {
+                const response = { statusCode: 200 };
+                assert.deepStrictEqual(filter.response(response), response);
+            });
+        });
+    });
 });
