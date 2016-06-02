@@ -147,6 +147,25 @@ describe('ServiceClient', () => {
         });
     });
 
+    it('should have the original response in a response filter error', (done) => {
+        clientOptions.filters = [{
+            response() {
+                throw new Error();
+            }
+        }];
+        const client = new ServiceClient(clientOptions);
+        const response = {
+            statusCode: 200,
+            headers: {},
+            body: '{ "error": "non-REST-error" }'
+        };
+        requestStub.returns(Promise.resolve(response));
+        client.request().catch(err => {
+            assert.deepStrictEqual(err.response, response);
+            done();
+        });
+    });
+
     it('should allow to specify request-filters to augment the request', (done) => {
         clientOptions.filters = [{
             request(request) {
