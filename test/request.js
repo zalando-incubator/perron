@@ -66,8 +66,23 @@ describe('request', () => {
         });
         const responseStub = new ResponseStub();
         httpsStub.request.firstCall.args[1](responseStub);
-        responseStub.emit('data', 'foo');
-        responseStub.emit('data', 'bar');
+        responseStub.emit('data',  Buffer.from('foo'));
+        responseStub.emit('data',  Buffer.from('bar'));
+        responseStub.emit('end');
+    });
+
+    it('should support responses chunked between utf8 boundaries', (done) => {
+        const requestStub = new RequestStub();
+        httpsStub.request.returns(requestStub);
+        request().then(response => {
+            assert.equal(response.body, 'я');
+            done();
+        });
+        const responseStub = new ResponseStub();
+        httpsStub.request.firstCall.args[1](responseStub);
+        const data = Buffer.from('я');
+        responseStub.emit('data', Buffer.from([data[0]]));
+        responseStub.emit('data', Buffer.from([data[1]]));
         responseStub.emit('end');
     });
 
