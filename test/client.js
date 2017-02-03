@@ -196,7 +196,7 @@ describe('ServiceClient', () => {
             foo: 'bar'
         };
         clientOptions.filters = [{
-            response() {
+            request() {
                 return new ServiceClient.Response(404, headers, body);
             }
         }];
