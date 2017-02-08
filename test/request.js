@@ -25,16 +25,22 @@ describe('request', () => {
     });
 
     it('should call https if protocol is not specified', () => {
+        const requestStub = new RequestStub();
+        httpsStub.request.returns(requestStub);
         request();
         assert.equal(httpsStub.request.callCount, 1);
     });
 
     it('should allow to call http if it is specified as protocol', () => {
+        const requestStub = new RequestStub();
+        httpStub.request.returns(requestStub);
         request({ protocol: 'http:' });
         assert.equal(httpStub.request.callCount, 1);
     });
 
     it('should return a promise', () => {
+        const requestStub = new RequestStub();
+        httpsStub.request.returns(requestStub);
         assert(typeof request().then, 'function');
     });
 
