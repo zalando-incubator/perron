@@ -57,6 +57,22 @@ describe('ServiceClient', () => {
         });
     });
 
+    it('should not throw error for empty response body', () => {
+        const client = new ServiceClient(clientOptions);
+        const originalBody = null;
+        requestStub.returns({
+            headers: {
+                'accept': 'text/plain'
+            },
+            body: null
+        });
+        return assert.doesNotThrow(() => {
+            client.request().then(({ body }) => {
+                assert.equal(body, originalBody);
+            });    
+        });
+    });
+
     it('should automatically parse response as JSON if content type is not set', () => {
         const client = new ServiceClient(clientOptions);
         const originalBody = { foo: 'bar' };
