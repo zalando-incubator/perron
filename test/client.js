@@ -69,6 +69,17 @@ describe('ServiceClient', () => {
         });
     });
 
+    it('should not throw an error if body is not set for statusCode 204', () => {
+        const client = new ServiceClient(clientOptions);
+        requestStub.returns(Promise.resolve({
+            headers: {},
+            statusCode: 204
+        }));
+        return client.request().then(({ body }) => {
+            assert.equal(body, undefined);
+        });
+    });
+
     it('should give a custom error object when the parsing of the body fails', () => {
         const client = new ServiceClient(clientOptions);
         const response = {
