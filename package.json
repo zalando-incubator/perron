@@ -1,6 +1,6 @@
 {
   "name": "perron",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "A sane client for web services",
   "engines": {
     "node": ">=6.0.0"
@@ -13,7 +13,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git@github.bus.zalan.do:pathfinder/z-service-client.git"
+    "url": "git@github.com:zalando-incubator/perron.git"
   },
   "author": "Team Pathfinder <team-pathfinder@zalando.de>",
   "license": "MIT",
