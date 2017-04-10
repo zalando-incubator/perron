@@ -3,10 +3,23 @@ const assert = require('assert');
 const sinon = require('sinon');
 const proxyquire = require('proxyquire').noCallThru();
 const EventEmitter = require('events');
+const zlib = require('zlib');
+const stream = require('stream');
 
 class ResponseStub extends EventEmitter {}
 class RequestStub extends EventEmitter {
     end() {}
+}
+class BufferStream extends stream.Readable {
+    constructor(buffer) {
+        super();
+        this.i = 0;
+        this.buffer = buffer;
+    }
+    _read() {
+        const chunk = this.i < this.buffer.length ? this.buffer.slice(this.i, ++this.i) : null;
+        this.push(chunk);
+    }
 }
 
 describe('request', () => {
@@ -72,9 +85,22 @@ describe('request', () => {
         });
         const responseStub = new ResponseStub();
         httpsStub.request.firstCall.args[1](responseStub);
-        responseStub.emit('data',  Buffer.from('foo'));
-        responseStub.emit('data',  Buffer.from('bar'));
+        responseStub.emit('data', Buffer.from('foo'));
+        responseStub.emit('data', Buffer.from('bar'));
         responseStub.emit('end');
+    });
+
+    it('should reject the promise on response error', (done) => {
+        const requestStub = new RequestStub();
+        httpsStub.request.returns(requestStub);
+        request().catch(error => {
+            assert.equal(error.message, 'test');
+            done();
+        });
+        const responseStub = new ResponseStub();
+        httpsStub.request.firstCall.args[1](responseStub);
+        responseStub.emit('data', Buffer.from('foo'));
+        responseStub.emit('error', new Error('test'));
     });
 
     it('should support responses chunked between utf8 boundaries', (done) => {
@@ -90,6 +116,39 @@ describe('request', () => {
         responseStub.emit('data', Buffer.from([data[0]]));
         responseStub.emit('data', Buffer.from([data[1]]));
         responseStub.emit('end');
+    });
+
+    ['gzip', 'deflate'].forEach((encoding) => {
+        it(`should inflate response body with ${encoding} encoding`, (done) => {
+            const requestStub = new RequestStub();
+            httpsStub.request.returns(requestStub);
+            request().then(response => {
+                assert.equal(response.body, 'foobar');
+                assert.equal(response.statusCode, 200);
+                assert.equal(response.headers['content-encoding'], 'gzip');
+                done();
+            }).catch(done);
+            const responseStub = new BufferStream(zlib.gzipSync('foobar'));
+            responseStub.statusCode = 200;
+            responseStub.headers = {
+                'content-encoding': 'gzip'
+            };
+            httpsStub.request.firstCall.args[1](responseStub);
+        });
+    });
+
+    it('should reject the promise on unzip error', (done) => {
+        const requestStub = new RequestStub();
+        httpsStub.request.returns(requestStub);
+        request().catch(error => {
+            assert.equal(error.message, 'incorrect header check');
+            done();
+        }).catch(done);
+        const responseStub = new BufferStream(Buffer.from('not gzipped!'));
+        responseStub.headers = {
+            'content-encoding': 'gzip'
+        };
+        httpsStub.request.firstCall.args[1](responseStub);
     });
 
 
