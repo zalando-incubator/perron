@@ -69,51 +69,69 @@ describe('ServiceClient', () => {
         });
     });
 
-    it('should not throw an error if body is not set for statusCode 204', () => {
+    it('should not throw an error if body or content-type is not set', () => {
         const client = new ServiceClient(clientOptions);
         requestStub.returns(Promise.resolve({
             headers: {},
-            statusCode: 204
+            body: ''
         }));
         return client.request().then(({ body }) => {
-            assert.equal(body, undefined);
+            assert.equal(body, '');
         });
     });
 
-    it('should give a custom error object when the parsing of the body fails', () => {
+    it('should throw an error if body is not set for application/json content type', (done) => {
+        const client = new ServiceClient(clientOptions);
+        const response = {
+            headers: { 'content-type': 'application/json' },
+            body: ''
+        };
+        requestStub.returns(Promise.resolve(response));
+        client.request().catch((err) => {
+            assert(err instanceof ServiceClient.Error);
+            assert.equal(err.type, ServiceClient.BODY_PARSE_FAILED);
+            assert.deepStrictEqual(err.response, response);
+            done();
+        });
+    });
+
+    it('should give a custom error object when the parsing of the body fails', (done) => {
         const client = new ServiceClient(clientOptions);
         const response = {
             headers: {},
             body: '/not a JSON'
         };
         requestStub.returns(Promise.resolve(response));
-        return client.request().catch(err => {
+        client.request().catch(err => {
             assert(err instanceof ServiceClient.Error);
             assert.equal(err.type, ServiceClient.BODY_PARSE_FAILED);
             assert.deepStrictEqual(err.response, response);
+            done();
         });
     });
 
-    it('should give a custom error object when request fails', () => {
+    it('should give a custom error object when request fails', (done) => {
         const client = new ServiceClient(clientOptions);
         const requestError = new Error('foobar');
         requestStub.returns(Promise.reject(requestError));
-        return client.request().catch(err => {
+        client.request().catch(err => {
             assert(err instanceof ServiceClient.Error);
             assert.equal(err.type, ServiceClient.REQUEST_FAILED);
+            done();
         });
     });
 
-    it('should by default handle 5xx code in a response-filter', () => {
+    it('should by default handle 5xx code in a response-filter', (done) => {
         const client = new ServiceClient(clientOptions);
         requestStub.returns(Promise.resolve({
             statusCode: 501,
             headers: {},
             body: '{}'
         }));
-        return client.request().catch(err => {
+        client.request().catch(err => {
             assert(err instanceof ServiceClient.Error);
             assert.equal(err.type, ServiceClient.RESPONSE_FILTER_FAILED);
+            done();
         });
     });
 
@@ -219,7 +237,7 @@ describe('ServiceClient', () => {
         });
     });
 
-    it('should open the circuit after 50% from 11 requests failed', () => {
+    it('should open the circuit after 50% from 11 requests failed', (done) => {
         const successResponse = Promise.resolve({
             statusCode: 200,
             headers: {},
@@ -241,7 +259,7 @@ describe('ServiceClient', () => {
         });
 
         const client = new ServiceClient(clientOptions);
-        return requests.reduce((promise) => {
+        requests.reduce((promise) => {
             const tick = () => {
                 return client.request();
             };
@@ -250,6 +268,7 @@ describe('ServiceClient', () => {
             return client.request().catch((err) => {
                 assert(err instanceof ServiceClient.Error);
                 assert(err.type, ServiceClient.CIRCUIT_OPEN);
+                done();
             });
         });
     });
