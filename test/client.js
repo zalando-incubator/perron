@@ -121,6 +121,20 @@ describe('ServiceClient', () => {
         });
     });
 
+    it('should allow to mark request as failed in the request filter', (done) => {
+        clientOptions.filters = [{
+            request() {
+                throw new Error('Failed!');
+            }
+        }];
+        const client = new ServiceClient(clientOptions);
+        client.request().catch(err => {
+            assert(err instanceof ServiceClient.Error);
+            assert.equal(err.type, 'Request filter marked request as failed');
+            done();
+        });
+    });
+
     it('should by default handle 5xx code in a response-filter', (done) => {
         const client = new ServiceClient(clientOptions);
         requestStub.returns(Promise.resolve({
@@ -130,7 +144,7 @@ describe('ServiceClient', () => {
         }));
         client.request().catch(err => {
             assert(err instanceof ServiceClient.Error);
-            assert.equal(err.type, ServiceClient.RESPONSE_FILTER_FAILED);
+            assert.equal(err.type, 'Response filter marked request as failed');
             done();
         });
     });
