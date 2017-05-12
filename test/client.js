@@ -284,7 +284,7 @@ describe('ServiceClient', () => {
             headers: {
                 accept: 'application/json'
             },
-            path: '/',
+            pathname: '/',
             timeout: 2000
         };
         it('should pass reasonable request params by default', (done) => {
@@ -306,17 +306,17 @@ describe('ServiceClient', () => {
         });
         it('should allow to override params of the request', (done) => {
             const client = new ServiceClient(clientOptions);
-            return client.request({path: '/foo'}).then(() => {
+            return client.request({pathname: '/foo'}).then(() => {
                 assert.deepStrictEqual(
                     requestStub.firstCall.args[0],
-                    Object.assign({}, expectedDefaultRequestOptions, {path: '/foo'})
+                    Object.assign({}, expectedDefaultRequestOptions, {pathname: '/foo'})
                 );
                 done();
             });
         });
         it('should allow to specify default params of the request', (done) => {
             const userDefaultRequestOptions = {
-                path: '/foo',
+                pathname: '/foo',
                 protocol: 'http:'
             };
             const client = new ServiceClient(Object.assign({}, clientOptions, {
