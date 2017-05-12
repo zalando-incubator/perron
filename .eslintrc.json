@@ -7,8 +7,7 @@
     "parserOptions": {
         "ecmaFeatures": {
             "experimentalObjectRestSpread": true
-        },
-        "sourceType": "module"
+        }
     },
     "rules": {
         "no-console": [
@@ -31,6 +30,10 @@
         "semi": [
             "error",
             "always"
+        ],
+        "strict": [
+            "error",
+            "global"
         ]
     }
 }
