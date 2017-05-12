@@ -353,5 +353,22 @@ describe('ServiceClient', () => {
                 done();
             });
         });
+        it('should support taking hostname and default params from a URL instead of an object', () => {
+            const client = new ServiceClient('http://localhost:9999/foo?param=42');
+            return client.request().then(() => {
+                assert.deepEqual(
+                    requestStub.firstCall.args[0],
+                    Object.assign({}, expectedDefaultRequestOptions, {
+                        port: 9999,
+                        hostname: 'localhost',
+                        pathname: '/foo',
+                        protocol: 'http:',
+                        query: {
+                            param: '42'
+                        }
+                    })
+                );
+            });
+        });
     });
 });
