@@ -277,7 +277,7 @@ describe('ServiceClient', () => {
     });
 
     describe('request params', () => {
-        const defaultRequestParams = {
+        const expectedDefaultRequestOptions = {
             hostname: 'catwatch.opensource.zalan.do',
             protocol: 'https:',
             port: 443,
@@ -290,7 +290,7 @@ describe('ServiceClient', () => {
         it('should pass reasonable request params by default', (done) => {
             const client = new ServiceClient(clientOptions);
             return client.request().then(() => {
-                assert.deepStrictEqual(requestStub.firstCall.args[0], defaultRequestParams);
+                assert.deepStrictEqual(requestStub.firstCall.args[0], expectedDefaultRequestOptions);
                 done();
             });
         });
@@ -299,7 +299,7 @@ describe('ServiceClient', () => {
             return client.request({foo: 'bar'}).then(() => {
                 assert.deepStrictEqual(
                     requestStub.firstCall.args[0],
-                    Object.assign({foo: 'bar'}, defaultRequestParams)
+                    Object.assign({foo: 'bar'}, expectedDefaultRequestOptions)
                 );
                 done();
             });
@@ -309,7 +309,35 @@ describe('ServiceClient', () => {
             return client.request({path: '/foo'}).then(() => {
                 assert.deepStrictEqual(
                     requestStub.firstCall.args[0],
-                    Object.assign({}, defaultRequestParams, {path: '/foo'})
+                    Object.assign({}, expectedDefaultRequestOptions, {path: '/foo'})
+                );
+                done();
+            });
+        });
+        it('should allow to specify default params of the request', (done) => {
+            const userDefaultRequestOptions = {
+                path: '/foo',
+                protocol: 'http:'
+            };
+            const client = new ServiceClient(Object.assign({}, clientOptions, {
+                defaultRequestOptions: userDefaultRequestOptions
+            }));
+            return client.request().then(() => {
+                assert.deepStrictEqual(
+                    requestStub.firstCall.args[0],
+                    Object.assign({}, expectedDefaultRequestOptions, userDefaultRequestOptions, {port: 80})
+                );
+                done();
+            });
+        });
+        it('should not allow to override hostname', (done) => {
+            const client = new ServiceClient(Object.assign({}, clientOptions, {
+                defaultRequestOptions: {hostname: 'zalando.de'}
+            }));
+            return client.request().then(() => {
+                assert.deepStrictEqual(
+                    requestStub.firstCall.args[0],
+                    Object.assign({}, expectedDefaultRequestOptions)
                 );
                 done();
             });
