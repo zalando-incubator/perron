@@ -314,10 +314,21 @@ describe('ServiceClient', () => {
                 done();
             });
         });
+        it('should allow to specify query params of the request', (done) => {
+            const client = new ServiceClient(clientOptions);
+            return client.request({pathname: '/foo', query: {param: 1}}).then(() => {
+                assert.deepStrictEqual(
+                    requestStub.firstCall.args[0],
+                    Object.assign({}, expectedDefaultRequestOptions, {pathname: '/foo', query: {param: 1}})
+                );
+                done();
+            });
+        });
         it('should allow to specify default params of the request', (done) => {
             const userDefaultRequestOptions = {
                 pathname: '/foo',
-                protocol: 'http:'
+                protocol: 'http:',
+                query: { param: 42 }
             };
             const client = new ServiceClient(Object.assign({}, clientOptions, {
                 defaultRequestOptions: userDefaultRequestOptions
