@@ -7,6 +7,11 @@ describe('ServiceClient', () => {
     let clientOptions;
 
     const requestStub = sinon.stub();
+    const emptySuccessResponse = Promise.resolve({
+        statusCode: 200,
+        headers: {},
+        body: '{}'
+    });
 
     const ServiceClient = proxyquire('../lib/client', {
         './request': requestStub
@@ -16,7 +21,7 @@ describe('ServiceClient', () => {
         clientOptions = {
             hostname: 'catwatch.opensource.zalan.do'
         };
-        requestStub.reset().returns(Promise.resolve({ headers: {}, body: '{}' }));
+        requestStub.reset().returns(emptySuccessResponse);
     });
 
     it('should throw if the service is not provided', () => {
@@ -203,11 +208,6 @@ describe('ServiceClient', () => {
             }
         }];
         const client = new ServiceClient(clientOptions);
-        requestStub.returns(Promise.resolve({
-            statusCode: 200,
-            headers: {},
-            body: '{}'
-        }));
         return client.request().then(() => {
             assert.equal(
                 requestStub.firstCall.args[0].path,
@@ -238,11 +238,6 @@ describe('ServiceClient', () => {
     });
 
     it('should open the circuit after 50% from 11 requests failed', (done) => {
-        const successResponse = Promise.resolve({
-            statusCode: 200,
-            headers: {},
-            body: '{}'
-        });
         const httpErrorResponse = Promise.resolve({
             statusCode: 500,
             headers: {},
@@ -251,9 +246,8 @@ describe('ServiceClient', () => {
         const errorResponse = Promise.resolve(Promise.reject(new Error('timeout')));
         const requests = Array.from({length: 11});
 
-        [
-            successResponse, successResponse, httpErrorResponse, successResponse, errorResponse, errorResponse,
-            httpErrorResponse, successResponse, httpErrorResponse, errorResponse, successResponse
+        [   emptySuccessResponse, emptySuccessResponse, httpErrorResponse, emptySuccessResponse, errorResponse, errorResponse,
+            httpErrorResponse, emptySuccessResponse, httpErrorResponse, errorResponse, emptySuccessResponse
         ].forEach((response, i) => {
             requestStub.onCall(i).returns(response);
         });
@@ -278,6 +272,46 @@ describe('ServiceClient', () => {
             [ServiceClient.treat4xxAsError, ServiceClient.treat5xxAsError].forEach(filter => {
                 const response = { statusCode: 200 };
                 assert.deepStrictEqual(filter.response(response), response);
+            });
+        });
+    });
+
+    describe('request params', () => {
+        const defaultRequestParams = {
+            hostname: 'catwatch.opensource.zalan.do',
+            protocol: 'https:',
+            port: 443,
+            headers: {
+                accept: 'application/json'
+            },
+            path: '/',
+            timeout: 2000
+        };
+        it('should pass reasonable request params by default', (done) => {
+            const client = new ServiceClient(clientOptions);
+            return client.request().then(() => {
+                assert.deepStrictEqual(requestStub.firstCall.args[0], defaultRequestParams);
+                done();
+            });
+        });
+        it('should allow to pass additional params to the request', (done) => {
+            const client = new ServiceClient(clientOptions);
+            return client.request({foo: 'bar'}).then(() => {
+                assert.deepStrictEqual(
+                    requestStub.firstCall.args[0],
+                    Object.assign({foo: 'bar'}, defaultRequestParams)
+                );
+                done();
+            });
+        });
+        it('should allow to override params of the request', (done) => {
+            const client = new ServiceClient(clientOptions);
+            return client.request({path: '/foo'}).then(() => {
+                assert.deepStrictEqual(
+                    requestStub.firstCall.args[0],
+                    Object.assign({}, defaultRequestParams, {path: '/foo'})
+                );
+                done();
             });
         });
     });
