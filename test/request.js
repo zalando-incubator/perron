@@ -51,6 +51,27 @@ describe('request', () => {
         assert.equal(httpStub.request.callCount, 1);
     });
 
+    it('should use pathname as path if none specified', () => {
+        const requestStub = new RequestStub();
+        httpsStub.request.returns(requestStub);
+        request({pathname: '/foo'});
+        assert.equal(httpsStub.request.firstCall.args[0].path, '/foo');
+    });
+
+    it('should prefer fully resolved path even if pathname is specified', () => {
+        const requestStub = new RequestStub();
+        httpsStub.request.returns(requestStub);
+        request({pathname: '/foo', path: '/bar'});
+        assert.equal(httpsStub.request.firstCall.args[0].path, '/bar');
+    });
+
+    it('should allow to specify query params as an object', () => {
+        const requestStub = new RequestStub();
+        httpsStub.request.returns(requestStub);
+        request({query: {foo: 'bar', buz: 42}, pathname: '/'});
+        assert.equal(httpsStub.request.firstCall.args[0].path, '/?foo=bar&buz=42');
+    });
+
     it('should return a promise', () => {
         const requestStub = new RequestStub();
         httpsStub.request.returns(requestStub);
