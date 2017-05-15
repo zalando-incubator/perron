@@ -8,6 +8,11 @@ describe('ServiceClient', () => {
     let clientOptions;
 
     const requestStub = sinon.stub();
+    const emptySuccessResponse = Promise.resolve({
+        statusCode: 200,
+        headers: {},
+        body: '{}'
+    });
 
     const ServiceClient = proxyquire('../lib/client', {
         './request': requestStub
@@ -17,7 +22,7 @@ describe('ServiceClient', () => {
         clientOptions = {
             hostname: 'catwatch.opensource.zalan.do'
         };
-        requestStub.reset().returns(Promise.resolve({ headers: {}, body: '{}' }));
+        requestStub.reset().returns(emptySuccessResponse);
     });
 
     it('should throw if the service is not provided', () => {
@@ -218,11 +223,6 @@ describe('ServiceClient', () => {
             }
         }];
         const client = new ServiceClient(clientOptions);
-        requestStub.returns(Promise.resolve({
-            statusCode: 200,
-            headers: {},
-            body: '{}'
-        }));
         return client.request().then(() => {
             assert.equal(
                 requestStub.firstCall.args[0].path,
@@ -253,11 +253,6 @@ describe('ServiceClient', () => {
     });
 
     it('should open the circuit after 50% from 11 requests failed', (done) => {
-        const successResponse = Promise.resolve({
-            statusCode: 200,
-            headers: {},
-            body: '{}'
-        });
         const httpErrorResponse = Promise.resolve({
             statusCode: 500,
             headers: {},
@@ -266,9 +261,8 @@ describe('ServiceClient', () => {
         const errorResponse = Promise.resolve(Promise.reject(new Error('timeout')));
         const requests = Array.from({length: 11});
 
-        [
-            successResponse, successResponse, httpErrorResponse, successResponse, errorResponse, errorResponse,
-            httpErrorResponse, successResponse, httpErrorResponse, errorResponse, successResponse
+        [   emptySuccessResponse, emptySuccessResponse, httpErrorResponse, emptySuccessResponse, errorResponse, errorResponse,
+            httpErrorResponse, emptySuccessResponse, httpErrorResponse, errorResponse, emptySuccessResponse
         ].forEach((response, i) => {
             requestStub.onCall(i).returns(response);
         });
@@ -293,6 +287,102 @@ describe('ServiceClient', () => {
             [ServiceClient.treat4xxAsError, ServiceClient.treat5xxAsError].forEach(filter => {
                 const response = { statusCode: 200 };
                 assert.deepStrictEqual(filter.response(response), response);
+            });
+        });
+    });
+
+    describe('request params', () => {
+        const expectedDefaultRequestOptions = {
+            hostname: 'catwatch.opensource.zalan.do',
+            protocol: 'https:',
+            port: 443,
+            headers: {
+                accept: 'application/json'
+            },
+            pathname: '/',
+            timeout: 2000
+        };
+        it('should pass reasonable request params by default', (done) => {
+            const client = new ServiceClient(clientOptions);
+            return client.request().then(() => {
+                assert.deepStrictEqual(requestStub.firstCall.args[0], expectedDefaultRequestOptions);
+                done();
+            });
+        });
+        it('should allow to pass additional params to the request', (done) => {
+            const client = new ServiceClient(clientOptions);
+            return client.request({foo: 'bar'}).then(() => {
+                assert.deepStrictEqual(
+                    requestStub.firstCall.args[0],
+                    Object.assign({foo: 'bar'}, expectedDefaultRequestOptions)
+                );
+                done();
+            });
+        });
+        it('should allow to override params of the request', (done) => {
+            const client = new ServiceClient(clientOptions);
+            return client.request({pathname: '/foo'}).then(() => {
+                assert.deepStrictEqual(
+                    requestStub.firstCall.args[0],
+                    Object.assign({}, expectedDefaultRequestOptions, {pathname: '/foo'})
+                );
+                done();
+            });
+        });
+        it('should allow to specify query params of the request', (done) => {
+            const client = new ServiceClient(clientOptions);
+            return client.request({pathname: '/foo', query: {param: 1}}).then(() => {
+                assert.deepStrictEqual(
+                    requestStub.firstCall.args[0],
+                    Object.assign({}, expectedDefaultRequestOptions, {pathname: '/foo', query: {param: 1}})
+                );
+                done();
+            });
+        });
+        it('should allow to specify default params of the request', (done) => {
+            const userDefaultRequestOptions = {
+                pathname: '/foo',
+                protocol: 'http:',
+                query: { param: 42 }
+            };
+            const client = new ServiceClient(Object.assign({}, clientOptions, {
+                defaultRequestOptions: userDefaultRequestOptions
+            }));
+            return client.request().then(() => {
+                assert.deepStrictEqual(
+                    requestStub.firstCall.args[0],
+                    Object.assign({}, expectedDefaultRequestOptions, userDefaultRequestOptions, {port: 80})
+                );
+                done();
+            });
+        });
+        it('should not allow to override hostname', (done) => {
+            const client = new ServiceClient(Object.assign({}, clientOptions, {
+                defaultRequestOptions: {hostname: 'zalando.de'}
+            }));
+            return client.request().then(() => {
+                assert.deepStrictEqual(
+                    requestStub.firstCall.args[0],
+                    Object.assign({}, expectedDefaultRequestOptions)
+                );
+                done();
+            });
+        });
+        it('should support taking hostname and default params from a URL instead of an object', () => {
+            const client = new ServiceClient('http://localhost:9999/foo?param=42');
+            return client.request().then(() => {
+                assert.deepEqual(
+                    requestStub.firstCall.args[0],
+                    Object.assign({}, expectedDefaultRequestOptions, {
+                        port: 9999,
+                        hostname: 'localhost',
+                        pathname: '/foo',
+                        protocol: 'http:',
+                        query: {
+                            param: '42'
+                        }
+                    })
+                );
             });
         });
     });

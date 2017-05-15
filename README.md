@@ -10,12 +10,13 @@ The following is a minimal example of using `perron` to call a web service:
 const ServiceClient = require('perron');
 
 // A separate instance of `perron` is required per host
-const catWatch = new ServiceClient({
-    hostname: 'catwatch.opensource.zalan.do'
-});
+const catWatch = new ServiceClient('https://catwatch.opensource.zalan.do');
 
 catWatch.request({
-    path: '/projects?limit=10'
+    pathname: '/projects',
+    query: {
+        limit: 10
+    }
 }).then(data => console.log(data));
 ```
 
