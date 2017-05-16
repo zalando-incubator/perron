@@ -22,11 +22,14 @@ describe('ServiceClient', () => {
         clientOptions = {
             hostname: 'catwatch.opensource.zalan.do'
         };
-        requestStub.reset().returns(emptySuccessResponse);
+        requestStub.reset();
+        requestStub.returns(emptySuccessResponse);
     });
 
     it('should throw if the service is not provided', () => {
-        assert.throws(() => { new ServiceClient({}); });
+        assert.throws(() => {
+            new ServiceClient({}); // eslint-disable-line no-new
+        });
     });
 
     it('should by default send an `accept` application/json header', () => {
@@ -223,7 +226,7 @@ describe('ServiceClient', () => {
             }
         }];
         const client = new ServiceClient(clientOptions);
-        return client.request().then(() => {
+        client.request().then(() => {
             assert.equal(
                 requestStub.firstCall.args[0].path,
                 'foo-bar-buzz'
@@ -245,7 +248,7 @@ describe('ServiceClient', () => {
             }
         }];
         const client = new ServiceClient(clientOptions);
-        return client.request().then((response) => {
+        client.request().then((response) => {
             assert.deepStrictEqual(response.headers, headers);
             assert.deepStrictEqual(response.body, body);
             done();
@@ -259,12 +262,12 @@ describe('ServiceClient', () => {
             body: '{}'
         });
         const errorResponse = Promise.resolve(Promise.reject(new Error('timeout')));
-        const requests = Array.from({length: 11});
+        const requests = Array.from({ length: 11 });
 
         [   emptySuccessResponse, emptySuccessResponse, httpErrorResponse, emptySuccessResponse, errorResponse, errorResponse,
             httpErrorResponse, emptySuccessResponse, httpErrorResponse, errorResponse, emptySuccessResponse
-        ].forEach((response, i) => {
-            requestStub.onCall(i).returns(response);
+        ].forEach((response, index) => {
+            requestStub.onCall(index).returns(response);
         });
 
         const client = new ServiceClient(clientOptions);
@@ -304,37 +307,43 @@ describe('ServiceClient', () => {
         };
         it('should pass reasonable request params by default', (done) => {
             const client = new ServiceClient(clientOptions);
-            return client.request().then(() => {
+            client.request().then(() => {
                 assert.deepStrictEqual(requestStub.firstCall.args[0], expectedDefaultRequestOptions);
                 done();
             });
         });
         it('should allow to pass additional params to the request', (done) => {
             const client = new ServiceClient(clientOptions);
-            return client.request({foo: 'bar'}).then(() => {
+            client.request({ foo: 'bar' }).then(() => {
                 assert.deepStrictEqual(
                     requestStub.firstCall.args[0],
-                    Object.assign({foo: 'bar'}, expectedDefaultRequestOptions)
+                    Object.assign({ foo: 'bar' }, expectedDefaultRequestOptions)
                 );
                 done();
             });
         });
         it('should allow to override params of the request', (done) => {
             const client = new ServiceClient(clientOptions);
-            return client.request({pathname: '/foo'}).then(() => {
+            client.request({ pathname: '/foo' }).then(() => {
                 assert.deepStrictEqual(
                     requestStub.firstCall.args[0],
-                    Object.assign({}, expectedDefaultRequestOptions, {pathname: '/foo'})
+                    Object.assign({}, expectedDefaultRequestOptions, { pathname: '/foo' })
                 );
                 done();
             });
         });
         it('should allow to specify query params of the request', (done) => {
             const client = new ServiceClient(clientOptions);
-            return client.request({pathname: '/foo', query: {param: 1}}).then(() => {
+            client.request({
+                pathname: '/foo',
+                query: { param: 1 }
+            }).then(() => {
                 assert.deepStrictEqual(
                     requestStub.firstCall.args[0],
-                    Object.assign({}, expectedDefaultRequestOptions, {pathname: '/foo', query: {param: 1}})
+                    Object.assign({}, expectedDefaultRequestOptions, {
+                        pathname: '/foo',
+                        query: { param: 1 }
+                    })
                 );
                 done();
             });
@@ -348,19 +357,19 @@ describe('ServiceClient', () => {
             const client = new ServiceClient(Object.assign({}, clientOptions, {
                 defaultRequestOptions: userDefaultRequestOptions
             }));
-            return client.request().then(() => {
+            client.request().then(() => {
                 assert.deepStrictEqual(
                     requestStub.firstCall.args[0],
-                    Object.assign({}, expectedDefaultRequestOptions, userDefaultRequestOptions, {port: 80})
+                    Object.assign({}, expectedDefaultRequestOptions, userDefaultRequestOptions, { port: 80 })
                 );
                 done();
             });
         });
         it('should not allow to override hostname', (done) => {
             const client = new ServiceClient(Object.assign({}, clientOptions, {
-                defaultRequestOptions: {hostname: 'zalando.de'}
+                defaultRequestOptions: { hostname: 'zalando.de' }
             }));
-            return client.request().then(() => {
+            client.request().then(() => {
                 assert.deepStrictEqual(
                     requestStub.firstCall.args[0],
                     Object.assign({}, expectedDefaultRequestOptions)
@@ -368,9 +377,9 @@ describe('ServiceClient', () => {
                 done();
             });
         });
-        it('should support taking hostname and default params from a URL instead of an object', () => {
+        it('should support taking hostname and default params from a URL instead of an object', (done) => {
             const client = new ServiceClient('http://localhost:9999/foo?param=42');
-            return client.request().then(() => {
+            client.request().then(() => {
                 assert.deepEqual(
                     requestStub.firstCall.args[0],
                     Object.assign({}, expectedDefaultRequestOptions, {
@@ -383,6 +392,7 @@ describe('ServiceClient', () => {
                         }
                     })
                 );
+                done();
             });
         });
     });

@@ -14,12 +14,16 @@ class RequestStub extends EventEmitter {
 class BufferStream extends stream.Readable {
     constructor(buffer) {
         super();
-        this.i = 0;
+        this.index = 0;
         this.buffer = buffer;
     }
     _read() {
-        const chunk = this.i < this.buffer.length ? this.buffer.slice(this.i, ++this.i) : null;
-        this.push(chunk);
+        if (this.index >= this.buffer.length) {
+            this.push(null);
+            return;
+        }
+        this.push(this.buffer.slice(this.index, this.index + 1));
+        this.index += 1;
     }
 }
 
@@ -54,17 +58,26 @@ describe('request', () => {
     });
 
     it('should use pathname as path if none specified', () => {
-        request({pathname: '/foo'});
+        request({ pathname: '/foo' });
         assert.equal(httpsStub.request.firstCall.args[0].path, '/foo');
     });
 
     it('should prefer fully resolved path even if pathname is specified', () => {
-        request({pathname: '/foo', path: '/bar'});
+        request({
+            pathname: '/foo',
+            path: '/bar'
+        });
         assert.equal(httpsStub.request.firstCall.args[0].path, '/bar');
     });
 
     it('should allow to specify query params as an object', () => {
-        request({query: {foo: 'bar', buz: 42}, pathname: '/'});
+        request({
+            query: {
+                foo: 'bar',
+                buz: 42
+            },
+            pathname: '/'
+        });
         assert.equal(httpsStub.request.firstCall.args[0].path, '/?foo=bar&buz=42');
     });
 
