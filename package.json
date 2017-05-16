@@ -7,7 +7,7 @@
   },
   "main": "lib/client.js",
   "scripts": {
-    "test": "mocha test",
+    "test": "eslint . && mocha test",
     "tdd": "mocha test --watch",
     "docs": "jsdoc2md lib/client.js > api.md"
   },
