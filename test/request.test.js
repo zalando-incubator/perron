@@ -14,12 +14,16 @@ class RequestStub extends EventEmitter {
 class BufferStream extends stream.Readable {
     constructor(buffer) {
         super();
-        this.i = 0;
+        this.index = 0;
         this.buffer = buffer;
     }
     _read() {
-        const chunk = this.i < this.buffer.length ? this.buffer.slice(this.i, ++this.i) : null;
-        this.push(chunk);
+        if (this.index >= this.buffer.length) {
+            this.push(null);
+            return;
+        }
+        this.push(this.buffer.slice(this.index, this.index + 1));
+        this.index += 1;
     }
 }
 
@@ -32,56 +36,56 @@ describe('request', () => {
         http: httpStub,
         https: httpsStub
     });
+    let requestStub;
 
     beforeEach(() => {
         httpStub.request = sinon.stub();
         httpsStub.request = sinon.stub();
+        requestStub = new RequestStub();
+        httpsStub.request.returns(requestStub);
     });
 
     it('should call https if protocol is not specified', () => {
-        const requestStub = new RequestStub();
-        httpsStub.request.returns(requestStub);
         request();
         assert.equal(httpsStub.request.callCount, 1);
     });
 
     it('should allow to call http if it is specified as protocol', () => {
-        const requestStub = new RequestStub();
+        httpsStub.request.returns(undefined);
         httpStub.request.returns(requestStub);
         request({ protocol: 'http:' });
         assert.equal(httpStub.request.callCount, 1);
     });
 
     it('should use pathname as path if none specified', () => {
-        const requestStub = new RequestStub();
-        httpsStub.request.returns(requestStub);
-        request({pathname: '/foo'});
+        request({ pathname: '/foo' });
         assert.equal(httpsStub.request.firstCall.args[0].path, '/foo');
     });
 
     it('should prefer fully resolved path even if pathname is specified', () => {
-        const requestStub = new RequestStub();
-        httpsStub.request.returns(requestStub);
-        request({pathname: '/foo', path: '/bar'});
+        request({
+            pathname: '/foo',
+            path: '/bar'
+        });
         assert.equal(httpsStub.request.firstCall.args[0].path, '/bar');
     });
 
     it('should allow to specify query params as an object', () => {
-        const requestStub = new RequestStub();
-        httpsStub.request.returns(requestStub);
-        request({query: {foo: 'bar', buz: 42}, pathname: '/'});
+        request({
+            query: {
+                foo: 'bar',
+                buz: 42
+            },
+            pathname: '/'
+        });
         assert.equal(httpsStub.request.firstCall.args[0].path, '/?foo=bar&buz=42');
     });
 
     it('should return a promise', () => {
-        const requestStub = new RequestStub();
-        httpsStub.request.returns(requestStub);
         assert(typeof request().then, 'function');
     });
 
     it('should reject a promise if request errors out', (done) => {
-        const requestStub = new RequestStub();
-        httpsStub.request.returns(requestStub);
         request().catch(() => {
             done();
         });
@@ -89,8 +93,6 @@ describe('request', () => {
     });
 
     it('should use the body of the request if one is provided', () => {
-        const requestStub = new RequestStub();
-        httpsStub.request.returns(requestStub);
         requestStub.write = sinon.spy();
         request({
             body: 'foobar'
@@ -99,8 +101,6 @@ describe('request', () => {
     });
 
     it('should resolve the promise with full response on success', (done) => {
-        const requestStub = new RequestStub();
-        httpsStub.request.returns(requestStub);
         request().then(response => {
             assert.equal(response.body, 'foobar');
             done();
@@ -113,8 +113,6 @@ describe('request', () => {
     });
 
     it('should reject the promise on response error', (done) => {
-        const requestStub = new RequestStub();
-        httpsStub.request.returns(requestStub);
         request().catch(error => {
             assert.equal(error.message, 'test');
             done();
@@ -126,8 +124,6 @@ describe('request', () => {
     });
 
     it('should support responses chunked between utf8 boundaries', (done) => {
-        const requestStub = new RequestStub();
-        httpsStub.request.returns(requestStub);
         request().then(response => {
             assert.equal(response.body, 'я');
             done();
@@ -142,8 +138,6 @@ describe('request', () => {
 
     ['gzip', 'deflate'].forEach((encoding) => {
         it(`should inflate response body with ${encoding} encoding`, (done) => {
-            const requestStub = new RequestStub();
-            httpsStub.request.returns(requestStub);
             request().then(response => {
                 assert.equal(response.body, 'foobar');
                 assert.equal(response.statusCode, 200);
@@ -160,8 +154,6 @@ describe('request', () => {
     });
 
     it('should reject the promise on unzip error', (done) => {
-        const requestStub = new RequestStub();
-        httpsStub.request.returns(requestStub);
         request().catch(error => {
             assert.equal(error.message, 'incorrect header check');
             done();
@@ -172,6 +164,5 @@ describe('request', () => {
         };
         httpsStub.request.firstCall.args[1](responseStub);
     });
-
 
 });
