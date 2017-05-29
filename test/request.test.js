@@ -6,7 +6,6 @@ const proxyquire = require('proxyquire').noCallThru();
 const EventEmitter = require('events');
 const zlib = require('zlib');
 const stream = require('stream');
-
 class ResponseStub extends EventEmitter {}
 class RequestStub extends EventEmitter {
     end() {}
@@ -31,6 +30,7 @@ describe('request', () => {
 
     const httpStub = {};
     const httpsStub = {};
+    let clock;
 
     let request = proxyquire('../lib/request', {
         http: httpStub,
@@ -43,8 +43,12 @@ describe('request', () => {
         httpsStub.request = sinon.stub();
         requestStub = new RequestStub();
         httpsStub.request.returns(requestStub);
+        clock = sinon.useFakeTimers();
     });
 
+    afterEach(() => {
+        clock.restore();
+    });
     it('should call https if protocol is not specified', () => {
         request();
         assert.equal(httpsStub.request.callCount, 1);
@@ -163,6 +167,73 @@ describe('request', () => {
             'content-encoding': 'gzip'
         };
         httpsStub.request.firstCall.args[1](responseStub);
+    });
+
+    it('should reject the promise on socket timeout', (done) => {
+        requestStub.abort = sinon.stub();
+        request().catch(error => {
+            assert.equal(error.message, 'socket timeout');
+            assert(requestStub.abort.calledOnce);
+            done();
+        }).catch(done);
+        requestStub.emit('timeout');
+    });
+
+    it('should resolve the promise when response finishes in time', (done) => {
+        requestStub.abort = sinon.stub();
+        const responseStub = new ResponseStub();
+        request({ dropRequestAfter: 500 }).then(response => {
+            assert.equal(response.body, 'hello');
+            assert(!requestStub.abort.called);
+            done();
+        }).catch(done);
+        clock.tick(100);
+        httpsStub.request.firstCall.args[1](responseStub);
+        clock.tick(100);
+        responseStub.emit('data', Buffer.from('hello'));
+        clock.tick(100);
+        responseStub.emit('end');
+    });
+
+    it('should resolve the promise when response finishes in time without data', (done) => {
+        requestStub.abort = sinon.stub();
+        const responseStub = new ResponseStub();
+        request({ dropRequestAfter: 500 }).then(response => {
+            assert.equal(response.body, '');
+            assert(!requestStub.abort.called);
+            done();
+        }).catch(done);
+        clock.tick(100);
+        httpsStub.request.firstCall.args[1](responseStub);
+        clock.tick(100);
+        responseStub.emit('end');
+    });
+
+    it('should reject the promise when response arrives but does not finish in time', (done) => {
+        requestStub.abort = sinon.stub();
+        const responseStub = new ResponseStub();
+        responseStub.destroy = sinon.stub();
+        request({ dropRequestAfter: 500 }).catch(error => {
+            assert.equal(error.message, 'request timeout');
+            assert(requestStub.abort.called);
+            done();
+        }).catch(done);
+        clock.tick(100);
+        httpsStub.request.firstCall.args[1](responseStub);
+        clock.tick(100);
+        responseStub.emit('data', 'hello');
+        clock.tick(300);
+    });
+
+    it('should reject the promise when response does not arrive in time', (done) => {
+        requestStub.abort = sinon.stub();
+        httpsStub.request.returns(requestStub);
+        request({ dropRequestAfter: 500 }).catch(error => {
+            assert.equal(error.message, 'request timeout');
+            assert(requestStub.abort.calledOnce);
+            done();
+        }).catch(done);
+        clock.tick(500);
     });
 
 });
