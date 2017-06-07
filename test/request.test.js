@@ -248,7 +248,6 @@ describe('request', () => {
 
     it('should record timings for non-keep-alive connection', (done) => {
         request({ timing: true }).then(response => {
-            assert.equal(response.timingStart, Date.now() - 150);
             assert.deepEqual(response.timings, {
                 socket: 10,
                 lookup: 30,
@@ -283,7 +282,6 @@ describe('request', () => {
 
     it('should record timings for keep-alive connection', (done) => {
         request({ timing: true }).then(response => {
-            assert.equal(response.timingStart, Date.now() - 60);
             assert.deepEqual(response.timings, {
                 socket: 10,
                 lookup: 10,
