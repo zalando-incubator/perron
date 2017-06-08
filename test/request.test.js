@@ -10,6 +10,12 @@ class ResponseStub extends EventEmitter {}
 class RequestStub extends EventEmitter {
     end() {}
 }
+class SocketStub extends EventEmitter {
+    constructor(connecting) {
+        super();
+        this.connecting = connecting;
+    }
+}
 class BufferStream extends stream.Readable {
     constructor(buffer) {
         super();
@@ -30,13 +36,13 @@ describe('request', () => {
 
     const httpStub = {};
     const httpsStub = {};
-    let clock;
 
     let request = proxyquire('../lib/request', {
         http: httpStub,
         https: httpsStub
     });
     let requestStub;
+    let clock;
 
     beforeEach(() => {
         httpStub.request = sinon.stub();
@@ -44,6 +50,10 @@ describe('request', () => {
         requestStub = new RequestStub();
         httpsStub.request.returns(requestStub);
         clock = sinon.useFakeTimers();
+    });
+
+    afterEach(() => {
+        clock.restore();
     });
 
     afterEach(() => {
@@ -234,6 +244,70 @@ describe('request', () => {
             done();
         }).catch(done);
         clock.tick(500);
+    });
+
+    it('should record timings for non-keep-alive connection', (done) => {
+        request({ timing: true }).then(response => {
+            assert.deepEqual(response.timings, {
+                socket: 10,
+                lookup: 30,
+                connect: 60,
+                response: 100,
+                end: 150
+            });
+            assert.deepEqual(response.timingPhases, {
+                wait: 10,
+                dns: 20,
+                tcp: 30,
+                firstByte: 40,
+                download: 50,
+                total: 150
+            });
+            done();
+        }).catch(done);
+        const socketStub = new SocketStub(true);
+        clock.tick(10);
+        requestStub.emit('socket', socketStub);
+        clock.tick(20);
+        socketStub.emit('lookup');
+        clock.tick(30);
+        socketStub.emit('connect');
+        clock.tick(40);
+        const responseStub = new ResponseStub();
+        httpsStub.request.firstCall.args[1](responseStub);
+        clock.tick(50);
+        responseStub.emit('data', Buffer.from('hello'));
+        responseStub.emit('end');
+    });
+
+    it('should record timings for keep-alive connection', (done) => {
+        request({ timing: true }).then(response => {
+            assert.deepEqual(response.timings, {
+                socket: 10,
+                lookup: 10,
+                connect: 10,
+                response: 30,
+                end: 60
+            });
+            assert.deepEqual(response.timingPhases, {
+                wait: 10,
+                dns: 0,
+                tcp: 0,
+                firstByte: 20,
+                download: 30,
+                total: 60
+            });
+            done();
+        }).catch(done);
+        const socketStub = new SocketStub(false);
+        clock.tick(10);
+        requestStub.emit('socket', socketStub);
+        clock.tick(20);
+        const responseStub = new ResponseStub();
+        httpsStub.request.firstCall.args[1](responseStub);
+        clock.tick(30);
+        responseStub.emit('data', Buffer.from('hello'));
+        responseStub.emit('end');
     });
 
 });
