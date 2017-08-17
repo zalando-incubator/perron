@@ -219,6 +219,23 @@ describe('request', () => {
         responseStub.emit('end');
     });
 
+    it('should attach the request options to the response', (done) => {
+        requestStub.abort = sinon.stub();
+        const responseStub = new ResponseStub();
+        const requestOptions = {
+            test: 'item'
+        };
+        request(requestOptions).then(response => {
+            assert.equal(response.request.test, requestOptions.test);
+            assert(!requestStub.abort.called);
+            done();
+        }).catch(done);
+        clock.tick(100);
+        httpsStub.request.firstCall.args[1](responseStub);
+        clock.tick(100);
+        responseStub.emit('end');
+    });
+
     it('should reject the promise when response arrives but does not finish in time', (done) => {
         requestStub.abort = sinon.stub();
         const responseStub = new ResponseStub();
