@@ -22,7 +22,7 @@
     "jsdoc-to-markdown": "3.0.0",
     "mocha": "3.4.1",
     "proxyquire": "1.8.0",
-    "sinon": "2.2.0"
+    "sinon": "3.3.0"
   },
   "dependencies": {
     "circuit-breaker-js": "0.0.1"
