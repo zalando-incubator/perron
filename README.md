@@ -87,7 +87,7 @@ const ServiceClient = require('perron');
 
 const catWatch = new ServiceClient({
     hostname: 'catwatch.opensource.zalan.do',
-    // This are the default settings
+    // These are the default settings
     circuitBreaker: {
         windowDuration: 10000,
         numBuckets: 10,
@@ -98,9 +98,9 @@ const catWatch = new ServiceClient({
 });
 ```
 
-Circuit breaker will count all errors, including the ones coming from filters, so it's generally better to do pre- end post- validation of your request outside of filter chain.
+Circuit breaker will count all errors, including the ones coming from filters, so it's generally better to do pre- and post- validation of your request outside of filter chain.
 
-If this is not the desired behavior, or you are already using a circuit breaker, it's always possible to disable the built in one:
+If this is not the desired behavior, or you are already using a circuit breaker, it's always possible to disable the built-in one:
 
 ```js
 const catWatch = new ServiceClient({
@@ -115,7 +115,7 @@ It's quite often necessary to do some pre- or post-processing of the request. Fo
 
 By default, every instance of `perron` includes a `treat5xxAsError` filter, but you can specify which filters should be use by providing a `filters` options when constructing an instance. This options expects an array of filter object and is *not* automatically merged with the default ones, so be sure to use `concat` if you want to keep the default filters as well.
 
-There isn't a separate request and response filter chains, so given that we have filters `A`, `B` and `C` the request flow will look like this:
+There aren't separate request and response filter chains, so given that we have filters `A`, `B` and `C` the request flow will look like this:
 
 ```
 A.request ---> B.request ---> C.request ---|
@@ -134,7 +134,7 @@ Let's say that we want to inject a custom header of the request. This is really 
 ```js
 const ServiceClient = require('perron');
 
-// A separate instance of Serviz is required per host
+// A separate instance of ServiceClient is required per host
 const catWatch = new ServiceClient({
     hostname: 'catwatch.opensource.zalan.do',
     filters: [{
@@ -156,7 +156,7 @@ const ServiceClient = require('perron');
 
 const getCache = require('./your-module-with-cache');
 
-// A separate instance of Serviz is required per host
+// A separate instance of ServiceClient is required per host
 const catWatch = new ServiceClient({
     hostname: 'catwatch.opensource.zalan.do',
     filters: [{
@@ -189,7 +189,7 @@ If the request is resolved in such a way, all of the pending filter in the reque
 
 ### Rejecting Request in a Filter
 
-It is possible to reject the request both in request and response filters by both throwing, or returning a rejected Promise. Doing so will be picked up by the circuit breaker, so this behavior should be reserved by the cases where the service returns `5xx` error, or the response is completely invalid (e.g. invalid JSON).
+It is possible to reject the request both in request and response filters by throwing, or by returning a rejected Promise. Doing so will be picked up by the circuit breaker, so this behavior should be reserved by the cases where the service returns `5xx` error, or the response is completely invalid (e.g. invalid JSON).
 
 ## License
 
