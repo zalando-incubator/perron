@@ -18,11 +18,11 @@
   "author": "Team Pathfinder <team-pathfinder@zalando.de>",
   "license": "MIT",
   "devDependencies": {
-    "eslint": "3.19.0",
+    "eslint": "4.7.2",
     "jsdoc-to-markdown": "3.0.0",
-    "mocha": "3.4.1",
+    "mocha": "3.5.3",
     "proxyquire": "1.8.0",
-    "sinon": "2.2.0"
+    "sinon": "3.3.0"
   },
   "dependencies": {
     "circuit-breaker-js": "0.0.1"
