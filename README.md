@@ -109,6 +109,37 @@ const catWatch = new ServiceClient({
 });
 ```
 
+## Fault Tolerant Requests
+
+Depending on the nature of the data required, it can be a good idea to perform a retry in the instance of a failed request. 
+
+The ServiceClient also has the ability to make a `faultTolerantRequest()` which will preform retries when the request fails, based on the retryOptions configuration. 
+
+Internally `perron` uses [retry](https://github.com/tim-kos/node-retry) in order to perform retries with exponential backoff.
+
+```js
+const ServiceClient = require('perron');
+
+const catWatch = new ServiceClient({
+    hostname: 'catwatch.opensource.zalan.do',
+    // These are the default settings
+    retryOptions: {
+        retries: 3,
+        factor: 2,
+        minTimeout: 500,
+        maxTimeout: 1000,
+        randomize: true
+    }
+});
+
+catWatch.faultTolerantRequest({
+    pathname: '/projects',
+    query: {
+        limit: 10
+    }
+}).then(data => console.log(data));
+```
+
 ## Filters
 
 It's quite often necessary to do some pre- or post-processing of the request. For this purpose `perron` implements a concept of filters, that are just an object with 2 optional methods: `request` and `response`.

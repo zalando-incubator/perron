@@ -73,7 +73,7 @@ describe('ServiceClient', () => {
             headers: {},
             body: JSON.stringify(originalBody)
         }));
-        return client.request().then(({ body }) => {
+        return client.faultTolerantRequest().then(({ body }) => {
             assert.deepStrictEqual(body, originalBody);
         });
     });
@@ -84,7 +84,7 @@ describe('ServiceClient', () => {
             headers: {},
             body: ''
         }));
-        return client.request().then(({ body }) => {
+        return client.faultTolerantRequest().then(({ body }) => {
             assert.equal(body, '');
         });
     });
@@ -96,7 +96,7 @@ describe('ServiceClient', () => {
             body: ''
         };
         requestStub.returns(Promise.resolve(response));
-        client.request().catch((err) => {
+        client.faultTolerantRequest().catch((err) => {
             assert(err instanceof ServiceClient.Error);
             assert.equal(err.type, ServiceClient.BODY_PARSE_FAILED);
             assert.deepStrictEqual(err.response, response);
@@ -111,7 +111,7 @@ describe('ServiceClient', () => {
             body: '/not a JSON'
         };
         requestStub.returns(Promise.resolve(response));
-        client.request().catch(err => {
+        client.faultTolerantRequest().catch(err => {
             assert(err instanceof ServiceClient.Error);
             assert.equal(err.type, ServiceClient.BODY_PARSE_FAILED);
             assert.deepStrictEqual(err.response, response);
@@ -123,7 +123,7 @@ describe('ServiceClient', () => {
         const client = new ServiceClient(clientOptions);
         const requestError = new Error('foobar');
         requestStub.returns(Promise.reject(requestError));
-        client.request().catch(err => {
+        client.faultTolerantRequest().catch(err => {
             assert(err instanceof ServiceClient.Error);
             assert.equal(err.type, ServiceClient.REQUEST_FAILED);
             done();
@@ -137,7 +137,7 @@ describe('ServiceClient', () => {
             }
         }];
         const client = new ServiceClient(clientOptions);
-        client.request().catch(err => {
+        client.faultTolerantRequest().catch(err => {
             assert(err instanceof ServiceClient.Error);
             assert.equal(err.type, 'Request filter marked request as failed');
             done();
@@ -151,7 +151,7 @@ describe('ServiceClient', () => {
             headers: {},
             body: '{}'
         }));
-        client.request().catch(err => {
+        client.faultTolerantRequest().catch(err => {
             assert(err instanceof ServiceClient.Error);
             assert.equal(err.type, 'Response filter marked request as failed');
             done();
@@ -169,7 +169,7 @@ describe('ServiceClient', () => {
             headers: {},
             body: '{}'
         }));
-        client.request().catch(err => {
+        client.faultTolerantRequest().catch(err => {
             assert(err instanceof ServiceClient.Error);
             assert.equal(err.type, ServiceClient.RESPONSE_FILTER_FAILED);
             done();
@@ -191,7 +191,7 @@ describe('ServiceClient', () => {
             headers: {},
             body: '{ "error": "non-REST-error" }'
         }));
-        client.request().catch(err => {
+        client.faultTolerantRequest().catch(err => {
             assert(err instanceof ServiceClient.Error);
             assert.equal(err.type, ServiceClient.RESPONSE_FILTER_FAILED);
             assert(err.message.includes('non-REST-error'));
@@ -212,7 +212,7 @@ describe('ServiceClient', () => {
             body: '{ "error": "non-REST-error" }'
         };
         requestStub.returns(Promise.resolve(response));
-        client.request().catch(err => {
+        client.faultTolerantRequest().catch(err => {
             assert.deepStrictEqual(err.response, response);
             done();
         });
@@ -226,7 +226,7 @@ describe('ServiceClient', () => {
             }
         }];
         const client = new ServiceClient(clientOptions);
-        client.request().then(() => {
+        client.faultTolerantRequest().then(() => {
             assert.equal(
                 requestStub.firstCall.args[0].path,
                 'foo-bar-buzz'
@@ -248,7 +248,7 @@ describe('ServiceClient', () => {
             }
         }];
         const client = new ServiceClient(clientOptions);
-        client.request().then((response) => {
+        client.faultTolerantRequest().then((response) => {
             assert.deepStrictEqual(response.headers, headers);
             assert.deepStrictEqual(response.body, body);
             done();
@@ -273,11 +273,11 @@ describe('ServiceClient', () => {
         const client = new ServiceClient(clientOptions);
         requests.reduce((promise) => {
             const tick = () => {
-                return client.request();
+                return client.faultTolerantRequest();
             };
             return promise.then(tick, tick);
         }, Promise.resolve()).then(() => {
-            return client.request().catch((err) => {
+            return client.faultTolerantRequest().catch((err) => {
                 assert(err instanceof ServiceClient.Error);
                 assert(err.type, ServiceClient.CIRCUIT_OPEN);
                 done();
