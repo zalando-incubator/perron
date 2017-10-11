@@ -1,7 +1,5 @@
 'use strict';
 
-/* eslint-disable */
-
 const assert = require('assert');
 const proxyquire = require('proxyquire').noCallThru();
 const sinon = require('sinon');

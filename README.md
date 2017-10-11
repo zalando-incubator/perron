@@ -116,7 +116,7 @@ For application critical requests it can be a good idea to retry failed requests
 Occasionaly target server can have high latency for a short period of time, or in the case of a stack of servers, one server can be having issues
 and retrying the request will allow perron to attempt to access one of the other servers that currently aren't facing issues.
 
-By default `perron` has retry logic implemented, but configured to perform 0 retries. Internally `perron` [node-retry](https://github.com/tim-kos/node-retry) to handle the retry logic
+By default `perron` has retry logic implemented, but configured to perform 0 retries. Internally `perron` uses [node-retry](https://github.com/tim-kos/node-retry) to handle the retry logic
 and configuration. All of the existing options provided by `node-retry` can be passed via configuration options through `perron`.
 
 There is also the addition of a transient error check function. This can be defined in any way by the consumer and is used in the try logic to determine whether to 
@@ -134,7 +134,7 @@ const catWatch = new ServiceClient({
         minTimeout: 200,
         maxTimeout: 300,
         randomize: true,
-        transientErrorCheck: (err) => {
+        transientErrorCheck(err) {
             return (err && err.response && err.response.statusCode >= 500);
         }
     }
