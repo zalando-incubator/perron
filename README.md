@@ -109,6 +109,38 @@ const catWatch = new ServiceClient({
 });
 ```
 
+## Retry Logic
+
+For application critical requests it can be a good idea to retry failed requests to the responsible services.
+
+Occasionaly target server can have high latency for a short period of time, or in the case of a stack of servers, one server can be having issues
+and retrying the request will allow perron to attempt to access one of the other servers that currently aren't facing issues.
+
+By default `perron` has retry logic implemented, but configured to perform 0 retries. Internally `perron` [node-retry](https://github.com/tim-kos/node-retry) to handle the retry logic
+and configuration. All of the existing options provided by `node-retry` can be passed via configuration options through `perron`.
+
+There is also the addition of a transient error check function. This can be defined in any way by the consumer and is used in the try logic to determine whether to 
+attempt the retries or not depending on the type of error. If the function returns true and the number of retries hasn't been exceeded, the request can be retried.
+
+```js
+const ServiceClient = require('perron');
+
+const catWatch = new ServiceClient({
+    hostname: 'catwatch.opensource.zalan.do',
+    // These are the default settings
+    retryOptions: {
+        retries: 1,
+        factor: 2,
+        minTimeout: 200,
+        maxTimeout: 300,
+        randomize: true,
+        transientErrorCheck: (err) => {
+            return (err && err.response && err.response.statusCode >= 500);
+        }
+    }
+});
+```
+
 ## Filters
 
 It's quite often necessary to do some pre- or post-processing of the request. For this purpose `perron` implements a concept of filters, that are just an object with 2 optional methods: `request` and `response`.
