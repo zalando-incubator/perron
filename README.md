@@ -132,7 +132,7 @@ const catWatch = new ServiceClient({
         retries: 1,
         factor: 2,
         minTimeout: 200,
-        maxTimeout: 300,
+        maxTimeout: 400,
         randomize: true,
         transientErrorCheck(err) {
             return (err && err.response && err.response.statusCode >= 500);
