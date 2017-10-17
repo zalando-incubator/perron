@@ -119,7 +119,7 @@ and retrying the request will allow perron to attempt to access one of the other
 By default `perron` has retry logic implemented, but configured to perform 0 retries. Internally `perron` uses [node-retry](https://github.com/tim-kos/node-retry) to handle the retry logic
 and configuration. All of the existing options provided by `node-retry` can be passed via configuration options through `perron`.
 
-There is a transient error check function. This can be defined in any way by the consumer and is used in the try logic to determine whether to 
+There is a shouldRetry function which can be defined in any way by the consumer and is used in the try logic to determine whether to 
 attempt the retries or not depending on the type of error. If the function returns true and the number of retries hasn't been exceeded, the request can be retried.
 
 There is also an onRetry function which can be defined by the user of `perron`. This function is called every time a retry request will be triggered.
@@ -136,7 +136,7 @@ const catWatch = new ServiceClient({
         minTimeout: 200,
         maxTimeout: 400,
         randomize: true,
-        transientErrorCheck(err) {
+        shouldRetry(err) {
             return (err && err.response && err.response.statusCode >= 500);
         },
         onRetry(currentAttempt, err) {

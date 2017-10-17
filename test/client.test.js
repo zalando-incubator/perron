@@ -400,7 +400,7 @@ describe('ServiceClient', () => {
     it('should perform the desired number of retries based on the configuration', (done) => {
         let numberOfRetries = 0;
         clientOptions.retryOptions = {
-            retries: 1,
+            retries: 3,
             onRetry() {
                 numberOfRetries += 1;
             }
@@ -412,7 +412,7 @@ describe('ServiceClient', () => {
             body: '{}'
         }));
         client.request().catch(err => {
-            assert.equal(numberOfRetries, 1);
+            assert.equal(numberOfRetries, 3);
             assert.equal(err instanceof ServiceClient.Error, true);
             assert.equal(err.type, 'Response filter marked request as failed');
             done();
@@ -453,6 +453,34 @@ describe('ServiceClient', () => {
             assert.equal(numberOfRetries, 4);
             assert.equal(err instanceof ServiceClient.Error, true);
             assert.equal(err.type, ServiceClient.CIRCUIT_OPEN);
+            done();
+        });
+    });
+
+    it('should not retry if the shouldRetry function returns false', (done) => {
+        let numberOfRetries = 0;
+        clientOptions.retryOptions = {
+            retries: 1,
+            shouldRetry(err) {
+                if (err.response.statusCode === 501) {
+                    return false;
+                }
+                return true;
+            },
+            onRetry() {
+                numberOfRetries += 1;
+            }
+        };
+        const client = new ServiceClient(clientOptions);
+        requestStub.returns(Promise.resolve({
+            statusCode: 501,
+            headers: {},
+            body: '{}'
+        }));
+        client.request().catch(err => {
+            assert.equal(numberOfRetries, 0);
+            assert.equal(err instanceof ServiceClient.Error, true);
+            assert.equal(err.type, 'Response filter marked request as failed');
             done();
         });
     });
