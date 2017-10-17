@@ -396,4 +396,92 @@ describe('ServiceClient', () => {
             });
         });
     });
+
+    it('should perform the desired number of retries based on the configuration', (done) => {
+        let numberOfRetries = 0;
+        clientOptions.retryOptions = {
+            retries: 3,
+            onRetry() {
+                numberOfRetries += 1;
+            }
+        };
+        const client = new ServiceClient(clientOptions);
+        requestStub.returns(Promise.resolve({
+            statusCode: 501,
+            headers: {},
+            body: '{}'
+        }));
+        client.request().catch(err => {
+            assert.equal(numberOfRetries, 3);
+            assert.equal(err instanceof ServiceClient.Error, true);
+            assert.equal(err.type, 'Response filter marked request as failed');
+            done();
+        });
+    });
+
+    it('should open the circuit after 50% from 11 requests failed and correct number of retries were performed', (done) => {
+        const httpErrorResponse = Promise.resolve({
+            statusCode: 500,
+            headers: {},
+            body: '{}'
+        });
+        let numberOfRetries = 0;
+        clientOptions.retryOptions = {
+            retries: 1,
+            onRetry() {
+                numberOfRetries += 1;
+            }
+        };
+        const errorResponse = Promise.resolve(Promise.reject(new Error('timeout')));
+        const requests = Array.from({ length: 11 });
+
+        [   emptySuccessResponse, emptySuccessResponse, errorResponse, emptySuccessResponse, httpErrorResponse, errorResponse,
+            httpErrorResponse, emptySuccessResponse, errorResponse, httpErrorResponse, emptySuccessResponse
+        ].forEach((response, index) => {
+            requestStub.onCall(index).returns(response);
+        });
+
+        const client = new ServiceClient(clientOptions);
+        requests.reduce((promise) => {
+            const tick = () => {
+                return client.request();
+            };
+            return promise.then(tick, tick);
+        }, Promise.resolve()).then(() => {
+            return client.request();
+        }).catch((err) => {
+            assert.equal(numberOfRetries, 4);
+            assert.equal(err instanceof ServiceClient.Error, true);
+            assert.equal(err.type, ServiceClient.CIRCUIT_OPEN);
+            done();
+        });
+    });
+
+    it('should not retry if the shouldRetry function returns false', (done) => {
+        let numberOfRetries = 0;
+        clientOptions.retryOptions = {
+            retries: 1,
+            shouldRetry(err) {
+                if (err.response.statusCode === 501) {
+                    return false;
+                }
+                return true;
+            },
+            onRetry() {
+                numberOfRetries += 1;
+            }
+        };
+        const client = new ServiceClient(clientOptions);
+        requestStub.returns(Promise.resolve({
+            statusCode: 501,
+            headers: {},
+            body: '{}'
+        }));
+        client.request().catch(err => {
+            assert.equal(numberOfRetries, 0);
+            assert.equal(err instanceof ServiceClient.Error, true);
+            assert.equal(err.type, 'Response filter marked request as failed');
+            done();
+        });
+    });
 });

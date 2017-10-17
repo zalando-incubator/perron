@@ -25,6 +25,7 @@
     "sinon": "3.3.0"
   },
   "dependencies": {
-    "circuit-breaker-js": "0.0.1"
+    "circuit-breaker-js": "0.0.1",
+    "retry": "0.10.1"
   }
 }
