@@ -142,7 +142,7 @@ const catWatch = new ServiceClient({
             return (err && err.response && err.response.statusCode >= 500);
         },
         onRetry(currentAttempt, err, req) {
-            console.log('Retry attempt #' + currentAttempt + ' for ' + req + ' due to ' + err);
+            console.log('Retry attempt #' + currentAttempt + ' for ' + req.path + ' due to ' + err);
         }
     }
 });
