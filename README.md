@@ -123,7 +123,7 @@ There is a shouldRetry function which can be defined in any way by the consumer 
 If the function returns true and the number of retries hasn't been exceeded, the request can be retried.
 
 There is also an onRetry function which can be defined by the user of `perron`. This function is called every time a retry request will be triggered.
-It is provided the currentAttempt, as well as the error that is causing the retry.
+It is provided the currentAttempt, the error that is causing the retry and the original request params.
 
 The first time onRetry gets called, the value of currentAttempt will be 2. This is because the first initial request is counted as the first attempt, and the first retry attempted will then be the second request.
 
@@ -141,8 +141,8 @@ const catWatch = new ServiceClient({
         shouldRetry(err, req) {
             return (err && err.response && err.response.statusCode >= 500);
         },
-        onRetry(currentAttempt, err) {
-            console.log('Retry attempt #' + currentAttempt + 'due to ' + err);
+        onRetry(currentAttempt, err, req) {
+            console.log('Retry attempt #' + currentAttempt + ' for ' + req + ' due to ' + err);
         }
     }
 });
