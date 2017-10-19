@@ -402,9 +402,9 @@ describe('ServiceClient', () => {
         clientOptions.retryOptions = {
             retries: 3,
             onRetry(currentAttempt, err, req) {
-                assert(currentAttempt);
-                assert(err);
-                assert(req);
+                assert(typeof currentAttempt === 'number');
+                assert(typeof err.type === 'string');
+                assert(req.pathname === '/');
                 numberOfRetries += 1;
             }
         };
@@ -432,9 +432,9 @@ describe('ServiceClient', () => {
         clientOptions.retryOptions = {
             retries: 1,
             onRetry(currentAttempt, err, req) {
-                assert(currentAttempt);
-                assert(err);
-                assert(req);
+                assert(typeof currentAttempt === 'number');
+                assert(typeof err.type === 'string');
+                assert(req.pathname === '/');
                 numberOfRetries += 1;
             }
         };
@@ -474,9 +474,9 @@ describe('ServiceClient', () => {
                 return true;
             },
             onRetry(currentAttempt, err, req) {
-                assert(currentAttempt);
-                assert(err);
-                assert(req);
+                assert(typeof currentAttempt === 'number');
+                assert(typeof err.type === 'string');
+                assert(req.pathname === '/');
                 numberOfRetries += 1;
             }
         };
