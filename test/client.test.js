@@ -401,7 +401,10 @@ describe('ServiceClient', () => {
         let numberOfRetries = 0;
         clientOptions.retryOptions = {
             retries: 3,
-            onRetry() {
+            onRetry(currentAttempt, err, req) {
+                assert(currentAttempt);
+                assert(err);
+                assert(req);
                 numberOfRetries += 1;
             }
         };
@@ -428,7 +431,10 @@ describe('ServiceClient', () => {
         let numberOfRetries = 0;
         clientOptions.retryOptions = {
             retries: 1,
-            onRetry() {
+            onRetry(currentAttempt, err, req) {
+                assert(currentAttempt);
+                assert(err);
+                assert(req);
                 numberOfRetries += 1;
             }
         };
@@ -467,7 +473,10 @@ describe('ServiceClient', () => {
                 }
                 return true;
             },
-            onRetry() {
+            onRetry(currentAttempt, err, req) {
+                assert(currentAttempt);
+                assert(err);
+                assert(req);
                 numberOfRetries += 1;
             }
         };
