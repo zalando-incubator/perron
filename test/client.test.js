@@ -398,15 +398,10 @@ describe('ServiceClient', () => {
     });
 
     it('should perform the desired number of retries based on the configuration', (done) => {
-        let numberOfRetries = 0;
+        const retrySpy = sinon.spy();
         clientOptions.retryOptions = {
             retries: 3,
-            onRetry(currentAttempt, err, req) {
-                assert(typeof currentAttempt === 'number');
-                assert(typeof err.type === 'string');
-                assert(req.pathname === '/');
-                numberOfRetries += 1;
-            }
+            onRetry: retrySpy
         };
         const client = new ServiceClient(clientOptions);
         requestStub.returns(Promise.resolve({
@@ -415,7 +410,8 @@ describe('ServiceClient', () => {
             body: '{}'
         }));
         client.request().catch(err => {
-            assert.equal(numberOfRetries, 3);
+            assert.equal(retrySpy.callCount, 3);
+            assert(retrySpy.alwaysCalledWithMatch(sinon.match.number, sinon.match.hasOwn('type'), sinon.match.hasOwn('pathname')));
             assert.equal(err instanceof ServiceClient.Error, true);
             assert.equal(err.type, 'Response filter marked request as failed');
             done();
@@ -428,15 +424,10 @@ describe('ServiceClient', () => {
             headers: {},
             body: '{}'
         });
-        let numberOfRetries = 0;
+        const retrySpy = sinon.spy();
         clientOptions.retryOptions = {
             retries: 1,
-            onRetry(currentAttempt, err, req) {
-                assert(typeof currentAttempt === 'number');
-                assert(typeof err.type === 'string');
-                assert(req.pathname === '/');
-                numberOfRetries += 1;
-            }
+            onRetry: retrySpy
         };
         const errorResponse = Promise.resolve(Promise.reject(new Error('timeout')));
         const requests = Array.from({ length: 11 });
@@ -456,7 +447,8 @@ describe('ServiceClient', () => {
         }, Promise.resolve()).then(() => {
             return client.request();
         }).catch((err) => {
-            assert.equal(numberOfRetries, 4);
+            assert.equal(retrySpy.callCount, 4);
+            assert(retrySpy.alwaysCalledWithMatch(sinon.match.number, sinon.match.hasOwn('type'), sinon.match.hasOwn('pathname')));
             assert.equal(err instanceof ServiceClient.Error, true);
             assert.equal(err.type, ServiceClient.CIRCUIT_OPEN);
             done();
@@ -464,7 +456,7 @@ describe('ServiceClient', () => {
     });
 
     it('should not retry if the shouldRetry function returns false', (done) => {
-        let numberOfRetries = 0;
+        const retrySpy = sinon.spy();
         clientOptions.retryOptions = {
             retries: 1,
             shouldRetry(err) {
@@ -473,12 +465,7 @@ describe('ServiceClient', () => {
                 }
                 return true;
             },
-            onRetry(currentAttempt, err, req) {
-                assert(typeof currentAttempt === 'number');
-                assert(typeof err.type === 'string');
-                assert(req.pathname === '/');
-                numberOfRetries += 1;
-            }
+            onRetry: retrySpy
         };
         const client = new ServiceClient(clientOptions);
         requestStub.returns(Promise.resolve({
@@ -487,7 +474,7 @@ describe('ServiceClient', () => {
             body: '{}'
         }));
         client.request().catch(err => {
-            assert.equal(numberOfRetries, 0);
+            assert.equal(retrySpy.callCount, 0);
             assert.equal(err instanceof ServiceClient.Error, true);
             assert.equal(err.type, 'Response filter marked request as failed');
             done();
