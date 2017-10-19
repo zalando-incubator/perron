@@ -480,4 +480,25 @@ describe('ServiceClient', () => {
             done();
         });
     });
+
+    it('should prepend the ServiceClient name to errors', (done) => {
+        clientOptions.name = 'TestClient';
+        const client = new ServiceClient(clientOptions);
+        const requestError = new Error('foobar');
+        requestStub.returns(Promise.reject(requestError));
+        client.request().catch(err => {
+            assert.equal(err.message, 'TestClient: HTTP Request failed. foobar');
+            done();
+        });
+    });
+
+    it('should default to `ServiceClient` in errors if no name is specified', (done) => {
+        const client = new ServiceClient(clientOptions);
+        const requestError = new Error('foobar');
+        requestStub.returns(Promise.reject(requestError));
+        client.request().catch(err => {
+            assert.equal(err.message, 'ServiceClient: HTTP Request failed. foobar');
+            done();
+        });
+    });
 });
