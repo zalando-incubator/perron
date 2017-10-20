@@ -492,12 +492,12 @@ describe('ServiceClient', () => {
         });
     });
 
-    it('should default to `ServiceClient` in errors if no name is specified', (done) => {
+    it('should default to hostname in errors if no name is specified', (done) => {
         const client = new ServiceClient(clientOptions);
         const requestError = new Error('foobar');
         requestStub.returns(Promise.reject(requestError));
         client.request().catch(err => {
-            assert.equal(err.message, 'ServiceClient: HTTP Request failed. foobar');
+            assert.equal(err.message, 'catwatch.opensource.zalan.do: HTTP Request failed. foobar');
             done();
         });
     });
