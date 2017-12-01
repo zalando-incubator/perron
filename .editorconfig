@@ -5,17 +5,12 @@ root = true
 
 # For most files
 [*]
+indent_size = 2
+indent_style = space
 end_of_line = lf
-insert_final_newline = true
 charset = utf-8
 trim_trailing_whitespace = true
-indent_style = space
-indent_size = 4
-
-# Override specific settings for npm generated json files to avoid big diffs
-[{package.json, npm-shrinkwrap.json}]
-indent_style = space
-indent_size = 2
+insert_final_newline = true
 
 # Makefile needs tabs
 [{Makefile}]

@@ -1,15 +1,15 @@
 {
   "name": "perron",
-  "version": "0.4.0-beta2",
+  "version": "0.5.0",
   "description": "A sane client for web services",
   "engines": {
     "node": ">=6.0.0"
   },
-  "main": "lib/client.js",
+  "main": "dist/client.js",
   "scripts": {
-    "test": "eslint . && mocha test",
+    "test": "tslint . && tsc && mocha test",
     "tdd": "mocha test --watch",
-    "docs": "jsdoc2md lib/client.js > api.md"
+    "docs": "jsdoc2md dist/client.js > api.md"
   },
   "repository": {
     "type": "git",
@@ -18,11 +18,21 @@
   "author": "Team Pathfinder <team-pathfinder@zalando.de>",
   "license": "MIT",
   "devDependencies": {
+    "@types/mocha": "^2.2.44",
+    "@types/node": "^8.0.53",
     "eslint": "4.7.2",
+    "eslint-config-standard": "^10.2.1",
+    "eslint-plugin-import": "^2.8.0",
+    "eslint-plugin-node": "^5.2.1",
+    "eslint-plugin-promise": "^3.6.0",
+    "eslint-plugin-standard": "^3.0.1",
     "jsdoc-to-markdown": "3.0.0",
     "mocha": "3.5.3",
     "proxyquire": "1.8.0",
-    "sinon": "3.3.0"
+    "sinon": "3.3.0",
+    "tslint": "^5.8.0",
+    "tslint-config-standard": "^7.0.0",
+    "typescript": "^2.6.2"
   },
   "dependencies": {
     "circuit-breaker-js": "0.0.1",
