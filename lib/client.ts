@@ -1,6 +1,7 @@
 import { ServiceClientRequestOptions, ServiceClientResponse, request } from './request'
 import * as url from 'url'
 
+// There are not good d.ts files available. Just using vanilla require here is less confusing  to tsc.
 const retry = require('retry')
 const CircuitBreaker = require('circuit-breaker-js')
 
@@ -17,7 +18,7 @@ export interface ServiceClientRequestFilter {
    * fail the request by throwing an Error.
    * @throws {Error}
    */
-  request?: (requestOptions: ServiceClientRequestOptions) => Promise<ServiceClientResponse| ServiceClientRequestOptions>
+  request?: (requestOptions: ServiceClientRequestOptions) => Promise<ServiceClientResponse | ServiceClientRequestOptions>
   /**
    * This callback is called after the response has arrived.
    * @throws {Error}
@@ -142,7 +143,7 @@ const decodeResponse = (response: ServiceClientResponse): ServiceClientResponse 
  * Wrapper that makes sure that all error coming out
  * of ServiceClients are actual ServiceClientError
  */
-const wrapFailedError = (type: string, error: Error | ServiceClientError, responseThunk?: Function) => {
+const wrapFailedError = (type: string, error: Error | ServiceClientError, responseThunk?: () => any) => {
   const serviceClientError = (error instanceof ServiceClientError) ? error : new ServiceClientError(error, type)
   if (!serviceClientError.response && responseThunk) {
     serviceClientError.response = responseThunk()
