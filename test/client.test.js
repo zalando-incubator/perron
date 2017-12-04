@@ -290,11 +290,11 @@ describe('ServiceClient', () => {
   describe('built-in filter', () => {
     it('should return original response if all ok', () => {
       return Promise.all([ServiceClient.treat4xxAsError, ServiceClient.treat5xxAsError].map(filter => {
-        const response = {statusCode: 200}
-        return filter.response(response).then((actual) => {
-          assert.deepStrictEqual(actual, response)
+          const response = {statusCode: 200}
+          return filter.response(response).then((actual) => {
+            assert.deepStrictEqual(actual, response)
+          })
         })
-      })
       )
     })
   })
@@ -473,6 +473,25 @@ describe('ServiceClient', () => {
       assert.equal(retrySpy.callCount, 0)
       assert.equal(err instanceof ServiceClient.Error, true)
       assert.equal(err.type, 'Response filter marked request as failed')
+    })
+  })
+
+  it('should prepend the ServiceClient name to errors', () => {
+    clientOptions.name = 'TestClient'
+    const client = new ServiceClient(clientOptions)
+    const requestError = new Error('foobar')
+    requestStub.returns(Promise.reject(requestError))
+    return client.request().catch(err => {
+      assert.equal(err.message, 'TestClient: HTTP Request failed. foobar')
+    })
+  })
+
+  it('should default to hostname in errors if no name is specified', () => {
+    const client = new ServiceClient(clientOptions)
+    const requestError = new Error('foobar')
+    requestStub.returns(Promise.reject(requestError))
+    return client.request().catch(err => {
+      assert.equal(err.message, 'catwatch.opensource.zalan.do: HTTP Request failed. foobar')
     })
   })
 })

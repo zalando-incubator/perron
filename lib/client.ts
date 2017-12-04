@@ -38,6 +38,10 @@ export class ServiceClientOptions {
    */
   hostname: string
   /**
+   * Name of the client. Primarily used in errors. Defaults to hostname.
+   */
+  name?: string
+  /**
    * If this property is not provided, the {@link ServiceClient.DEFAULT_FILTERS} will be used.
    */
   filters?: ServiceClientRequestFilter[]
@@ -118,8 +122,8 @@ class ServiceClientStrictOptions {
  * A custom error returned in case something goes wrong.
  */
 export class ServiceClientError extends Error {
-  constructor (originalError: Error, public type: string, public response?: ServiceClientResponse) {
-    super(`${type}. ${originalError.message || ''}`)
+  constructor (originalError: Error, public type: string, public response?: ServiceClientResponse, name: string = "ServiceClient") {
+    super(`${name}: ${type}. ${originalError.message || ''}`)
     Object.assign(this, originalError)
   }
 }
@@ -127,14 +131,14 @@ export class ServiceClientError extends Error {
 /**
  * This function takes a response and if it is of type json, tries to parse the body.
  */
-const decodeResponse = (response: ServiceClientResponse): ServiceClientResponse => {
+const decodeResponse = (client: ServiceClient, response: ServiceClientResponse): ServiceClientResponse => {
   const contentType = response.headers['content-type'] || (response.body ? 'application/json' : '')
   if (contentType.startsWith('application/json') && typeof response.body !== 'object') {
     try {
       response.body = JSON.parse(response.body)
     } catch (error) {
       throw new ServiceClientError(
-        error, ServiceClient.BODY_PARSE_FAILED, response
+        error, ServiceClient.BODY_PARSE_FAILED, response, client.name
       )
     }
   }
@@ -145,8 +149,8 @@ const decodeResponse = (response: ServiceClientResponse): ServiceClientResponse 
  * Wrapper that makes sure that all error coming out
  * of ServiceClients are actual ServiceClientError
  */
-const wrapFailedError = (type: string, error: Error | ServiceClientError, responseThunk?: () => any) => {
-  const serviceClientError = (error instanceof ServiceClientError) ? error : new ServiceClientError(error, type)
+const wrapFailedError = (client: ServiceClient, type: string, error: Error | ServiceClientError, responseThunk?: () => any) => {
+  const serviceClientError = (error instanceof ServiceClientError) ? error : new ServiceClientError(error, type, undefined, client.name)
   if (!serviceClientError.response && responseThunk) {
     serviceClientError.response = responseThunk()
   }
@@ -163,7 +167,7 @@ const unwindResponseFilters = (promise: Promise<ServiceClientResponse>, filter: 
 /**
  * Actually performs the request and applies the available filters in their respective phases.
  */
-const requestWithFilters = (params: ServiceClientRequestOptions, filters: ServiceClientRequestFilter[]): Promise<ServiceClientResponse> => {
+const requestWithFilters = (client: ServiceClient, params: ServiceClientRequestOptions, filters: ServiceClientRequestFilter[]): Promise<ServiceClientResponse> => {
   const pendingResponseFilters: ServiceClientRequestFilter[] = []
 
   const requestFilterPromise = filters.reduce((promise: Promise<ServiceClientResponse | ServiceClientRequestOptions>, filter) => {
@@ -182,25 +186,26 @@ const requestWithFilters = (params: ServiceClientRequestOptions, filters: Servic
   const responseThunk = () => response
 
   return requestFilterPromise
-    .catch((err: Error) => wrapFailedError(ServiceClient.REQUEST_FILTER_FAILED, err))
+    .catch((err: Error) => wrapFailedError(client, ServiceClient.REQUEST_FILTER_FAILED, err))
     .then((paramsOrResponse) =>
       (paramsOrResponse instanceof ServiceClientResponse) ? paramsOrResponse : request(paramsOrResponse)
     )
     .then(
       (rawResponse) => {
         response = rawResponse
-        return decodeResponse(rawResponse)
+        return decodeResponse(client, rawResponse)
       },
-      (err) => wrapFailedError(ServiceClient.REQUEST_FAILED, err, responseThunk)
+      (err) => wrapFailedError(client, ServiceClient.REQUEST_FAILED, err, responseThunk)
     )
     .then(resp => pendingResponseFilters.reduce(unwindResponseFilters, Promise.resolve(resp)))
-    .catch((err) => wrapFailedError(ServiceClient.RESPONSE_FILTER_FAILED, err, responseThunk))
+    .catch((err) => wrapFailedError(client, ServiceClient.RESPONSE_FILTER_FAILED, err, responseThunk))
 }
 
 export class ServiceClient {
 
   private breaker: any
   private options: ServiceClientStrictOptions
+  public name: string
 
   /**
    * A ServiceClient can be constructed with all defaults by simply providing a URL, that can be parsed
@@ -242,6 +247,7 @@ export class ServiceClient {
     }
 
     this.options = new ServiceClientStrictOptions(options)
+    this.name = options.name || options.hostname
   }
 
   /**
@@ -276,10 +282,11 @@ export class ServiceClient {
     }
 
     const operation = retry.operation(opts)
+    const client: ServiceClient = this
 
     return new Promise<ServiceClientResponse>((resolve, reject) => operation.attempt((currentAttempt: number) => {
       this.breaker.run((success: () => void, failure: () => void) => {
-          return requestWithFilters(params, this.options.filters || [])
+          return requestWithFilters(client, params, this.options.filters || [])
             .then((result: ServiceClientResponse) => {
               success()
               resolve(result)
@@ -298,7 +305,7 @@ export class ServiceClient {
             })
         },
         () => {
-          reject(new ServiceClientError(new Error(), ServiceClient.CIRCUIT_OPEN))
+          reject(new ServiceClientError(new Error(), ServiceClient.CIRCUIT_OPEN, undefined, client.name))
         })
     }))
   }
