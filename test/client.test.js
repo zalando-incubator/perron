@@ -14,7 +14,7 @@ describe('ServiceClient', () => {
     headers: {},
     body: '{}'
   })
-  const ServiceClient = proxyquire('../dist/client', {
+  const {ServiceClient} = proxyquire('../dist/client', {
     './request': {
       request: requestStub,
       ServiceClientResponse: realRequest.ServiceClientResponse,
