@@ -1,6 +1,8 @@
 import { ServiceClientRequestOptions, ServiceClientResponse, request } from './request'
 import * as url from 'url'
 
+export {ServiceClientResponse, ServiceClientRequestOptions}
+
 // There are not good d.ts files available. Just using vanilla require here is less confusing  to tsc.
 const retry = require('retry')
 const CircuitBreaker = require('circuit-breaker-js')
@@ -195,7 +197,7 @@ const requestWithFilters = (params: ServiceClientRequestOptions, filters: Servic
     .catch((err) => wrapFailedError(ServiceClient.RESPONSE_FILTER_FAILED, err, responseThunk))
 }
 
-class ServiceClient {
+export class ServiceClient {
 
   private breaker: any
   private options: ServiceClientStrictOptions
@@ -355,8 +357,7 @@ class ServiceClient {
    */
   static Error = ServiceClientError
 }
+Object.freeze(ServiceClient)
 
-export {ServiceClientResponse, ServiceClientRequestOptions} from './request'
-
-module.exports = Object.freeze(ServiceClient)
+export default ServiceClient
 
