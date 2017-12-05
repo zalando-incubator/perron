@@ -5,12 +5,30 @@
 
 A sane client for web services with a built-in circuit-breaker, support for filtering both request and response.
 
+## Breaking Change in Version 0.5
+
+In 0.5.0 we changed the exports of the module to be forward-compatible with ES modules. If you are using CommonJS-style require calls, they need to updated from:
+
+```js
+const ServiceClient = require('perron')
+```
+
+to
+
+```
+const {ServiceClient} = require('perron')
+```
+
+So `ServiceClient` is now a named export.
+
+If you were using babel to transpile your code, no changes should be necessary.
+
 ## Quick Example
 
 The following is a minimal example of using `perron` to call a web service:
 
 ```js
-const ServiceClient = require('perron');
+const {ServiceClient} = require('perron');
 
 // A separate instance of `perron` is required per host
 const catWatch = new ServiceClient('https://catwatch.opensource.zalan.do');
@@ -83,7 +101,7 @@ It's almost always a good idea to have a circuit breaker around your service cal
 This is why `perron` by default includes one circuit breaker per instance. Internally `perron` uses [circuit-breaker-js](https://github.com/yammer/circuit-breaker-js), so you can use all of it's options when configuring the breaker:
 
 ```js
-const ServiceClient = require('perron');
+const {ServiceClient} = require('perron');
 
 const catWatch = new ServiceClient({
     hostname: 'catwatch.opensource.zalan.do',
@@ -119,7 +137,7 @@ and retrying the request will allow perron to attempt to access one of the other
 By default `perron` has retry logic implemented, but configured to perform 0 retries. Internally `perron` uses [node-retry](https://github.com/tim-kos/node-retry) to handle the retry logic
 and configuration. All of the existing options provided by `node-retry` can be passed via configuration options through `perron`.
 
-There is a shouldRetry function which can be defined in any way by the consumer and is used in the try logic to determine whether to attempt the retries or not depending on the type of error and the original request object. 
+There is a shouldRetry function which can be defined in any way by the consumer and is used in the try logic to determine whether to attempt the retries or not depending on the type of error and the original request object.
 If the function returns true and the number of retries hasn't been exceeded, the request can be retried.
 
 There is also an onRetry function which can be defined by the user of `perron`. This function is called every time a retry request will be triggered.
@@ -128,7 +146,7 @@ It is provided the currentAttempt, the error that is causing the retry and the o
 The first time onRetry gets called, the value of currentAttempt will be 2. This is because the first initial request is counted as the first attempt, and the first retry attempted will then be the second request.
 
 ```js
-const ServiceClient = require('perron');
+const {ServiceClient} = require('perron');
 
 const catWatch = new ServiceClient({
     hostname: 'catwatch.opensource.zalan.do',
@@ -171,7 +189,7 @@ If corresponding `request` or `response` method is missing in the filter, it is 
 Let's say that we want to inject a custom header of the request. This is really easy to do in a request filter:
 
 ```js
-const ServiceClient = require('perron');
+const {ServiceClient} = require('perron');
 
 // A separate instance of ServiceClient is required per host
 const catWatch = new ServiceClient({
@@ -191,7 +209,7 @@ const catWatch = new ServiceClient({
 Sometimes it is necessary to pretend to have called the service without actually doing it. This could be useful for caching, and is also very easy to implement:
 
 ```js
-const ServiceClient = require('perron');
+const {ServiceClient} = require('perron');
 
 const getCache = require('./your-module-with-cache');
 
