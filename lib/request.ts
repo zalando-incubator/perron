@@ -13,7 +13,7 @@ export interface ServiceClientRequestOptions extends RequestOptions {
   query?: object
   timing?: boolean
   dropRequestAfter?: number
-  body? :any
+  body?: any
 }
 
 export class ServiceClientResponse {
@@ -70,7 +70,7 @@ export const request = (options: ServiceClientRequestOptions): Promise<ServiceCl
         timings.response = getInterval(startTime)
       }
       let bodyStream
-      const chunks:Buffer[] = []
+      const chunks: Buffer[] = []
       const encoding = response.headers && response.headers['content-encoding']
       if (encoding === 'gzip' || encoding === 'deflate') {
         response.on('error', reject)
