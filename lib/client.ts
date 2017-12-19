@@ -128,12 +128,14 @@ export class ServiceClientError extends Error {
   }
 }
 
+const JSON_CONTENT_TYPE_REGEX = /application\/(.*?[+])?json/i
+
 /**
  * This function takes a response and if it is of type json, tries to parse the body.
  */
 const decodeResponse = (client: ServiceClient, response: ServiceClientResponse): ServiceClientResponse => {
   const contentType = response.headers['content-type'] || (response.body ? 'application/json' : '')
-  if (contentType.startsWith('application/json') && typeof response.body !== 'object') {
+  if (typeof response.body === 'string' && JSON_CONTENT_TYPE_REGEX.test(contentType)) {
     try {
       response.body = JSON.parse(response.body)
     } catch (error) {

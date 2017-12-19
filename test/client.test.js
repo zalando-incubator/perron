@@ -61,7 +61,7 @@ describe('ServiceClient', () => {
     const originalBody = {foo: 'bar'}
     requestStub.returns({
       headers: {
-        'content-type': 'application/json+something'
+        'content-type': 'application/x.problem+json'
       },
       body: JSON.stringify(originalBody)
     })
@@ -290,12 +290,11 @@ describe('ServiceClient', () => {
   describe('built-in filter', () => {
     it('should return original response if all ok', () => {
       return Promise.all([ServiceClient.treat4xxAsError, ServiceClient.treat5xxAsError].map(filter => {
-          const response = {statusCode: 200}
-          return filter.response(response).then((actual) => {
-            assert.deepStrictEqual(actual, response)
-          })
+        const response = {statusCode: 200}
+        return filter.response(response).then((actual) => {
+          assert.deepStrictEqual(actual, response)
         })
-      )
+      }))
     })
   })
 
