@@ -1,7 +1,7 @@
 import { ServiceClientRequestOptions, ServiceClientResponse, request } from './request'
 import * as url from 'url'
 
-export {ServiceClientResponse, ServiceClientRequestOptions}
+export { ServiceClientResponse, ServiceClientRequestOptions }
 
 // There are not good d.ts files available. Just using vanilla require here is less confusing  to tsc.
 const retry = require('retry')
@@ -86,7 +86,7 @@ class ServiceClientStrictOptions {
   }
   defaultRequestOptions: ServiceClientRequestOptions
 
-  constructor(options: ServiceClientOptions){
+  constructor (options: ServiceClientOptions) {
     if (!options.hostname) {
       throw new Error('Please provide a `hostname` for this client')
     }
@@ -103,7 +103,7 @@ class ServiceClientStrictOptions {
       shouldRetry () {
         return true
       },
-      onRetry () {}
+      onRetry () {/* do nothing */}
     }, options.retryOptions)
 
     if ((this.retryOptions.minTimeout || 0) > (this.retryOptions.maxTimeout || 0)) {
@@ -122,7 +122,7 @@ class ServiceClientStrictOptions {
  * A custom error returned in case something goes wrong.
  */
 export class ServiceClientError extends Error {
-  constructor (originalError: Error, public type: string, public response?: ServiceClientResponse, name: string = "ServiceClient") {
+  constructor (originalError: Error, public type: string, public response?: ServiceClientResponse, name: string = 'ServiceClient') {
     super(`${name}: ${type}. ${originalError.message || ''}`)
     Object.assign(this, originalError)
   }
@@ -142,7 +142,7 @@ const decodeResponse = (client: ServiceClient, response: ServiceClientResponse):
       )
     }
   }
-  return response;
+  return response
 }
 
 /**
@@ -217,7 +217,7 @@ export class ServiceClient {
     if (typeof optionsOrUrl === 'string') {
       const parsed = url.parse(optionsOrUrl, true)
       // pathname will be overwritten in actual usage, we just guarantee a sane default
-      const defaultRequestOptions: ServiceClientRequestOptions = {pathname: '/'}
+      const defaultRequestOptions: ServiceClientRequestOptions = { pathname: '/' }
       const keys: ('port' | 'protocol' | 'query' | 'pathname')[] = ['port', 'protocol', 'query', 'pathname']
       keys.forEach((option) => {
         if (parsed.hasOwnProperty(option)) {
@@ -242,8 +242,8 @@ export class ServiceClient {
       }, options.circuitBreaker)
       this.breaker = new CircuitBreaker(breakerOptions)
     } else {
-      const noop = () => {}
-      this.breaker = {run (command: Function) { command(noop, noop) }}
+      const noop = () => {/* do nothing */}
+      this.breaker = { run (command: Function) { command(noop, noop) } }
     }
 
     this.options = new ServiceClientStrictOptions(options)
@@ -286,7 +286,7 @@ export class ServiceClient {
 
     return new Promise<ServiceClientResponse>((resolve, reject) => operation.attempt((currentAttempt: number) => {
       this.breaker.run((success: () => void, failure: () => void) => {
-          return requestWithFilters(client, params, this.options.filters || [])
+        return requestWithFilters(client, params, this.options.filters || [])
             .then((result: ServiceClientResponse) => {
               success()
               resolve(result)
@@ -303,7 +303,7 @@ export class ServiceClient {
               }
               onRetry(currentAttempt + 1, error, params)
             })
-        },
+      },
         () => {
           reject(new ServiceClientError(new Error(), ServiceClient.CIRCUIT_OPEN, undefined, client.name))
         })
@@ -367,4 +367,3 @@ export class ServiceClient {
 Object.freeze(ServiceClient)
 
 export default ServiceClient
-
