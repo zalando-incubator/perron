@@ -33,6 +33,10 @@ export interface ServiceClientRequestFilter {
  */
 export class ServiceClientOptions {
   /**
+   * This is the used protocol schema. Possible values: http, https. Defaults to: https.
+   */
+  protocol?: string
+  /**
    * This is the only mandatory option when creating a service client. All other properties have
    * reasonable defaults.
    */
