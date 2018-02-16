@@ -8,12 +8,30 @@ A sane client for web services with a built-in circuit-breaker, support for filt
 npm install perron --save
 ```
 
+## Breaking Change in Version 0.5
+
+In 0.5.0 we changed the exports of the module to be forward-compatible with ES modules. If you are using CommonJS-style require calls, they need to updated from:
+
+```js
+const ServiceClient = require('perron')
+```
+
+to
+
+```
+const {ServiceClient} = require('perron')
+```
+
+So `ServiceClient` is now a named export.
+
+If you were using babel to transpile your code, no changes should be necessary.
+
 ## Quick Example
 
 The following is a minimal example of using `perron` to call a web service:
 
 ```js
-const ServiceClient = require('perron');
+const {ServiceClient} = require('perron');
 
 // A separate instance of `perron` is required per host
 const catWatch = new ServiceClient('https://catwatch.opensource.zalan.do');
@@ -86,11 +104,11 @@ It's almost always a good idea to have a circuit breaker around your service cal
 This is why `perron` by default includes one circuit breaker per instance. Internally `perron` uses [circuit-breaker-js](https://github.com/yammer/circuit-breaker-js), so you can use all of it's options when configuring the breaker:
 
 ```js
-const ServiceClient = require('perron');
+const {ServiceClient} = require('perron');
 
 const catWatch = new ServiceClient({
     hostname: 'catwatch.opensource.zalan.do',
-    // This are the default settings
+    // These are the default settings
     circuitBreaker: {
         windowDuration: 10000,
         numBuckets: 10,
@@ -101,14 +119,53 @@ const catWatch = new ServiceClient({
 });
 ```
 
-Circuit breaker will count all errors, including the ones coming from filters, so it's generally better to do pre- end post- validation of your request outside of filter chain.
+Circuit breaker will count all errors, including the ones coming from filters, so it's generally better to do pre- and post- validation of your request outside of filter chain.
 
-If this is not the desired behavior, or you are already using a circuit breaker, it's always possible to disable the built in one:
+If this is not the desired behavior, or you are already using a circuit breaker, it's always possible to disable the built-in one:
 
 ```js
 const catWatch = new ServiceClient({
     hostname: 'catwatch.opensource.zalan.do',
     circuitBreaker: false
+});
+```
+
+## Retry Logic
+
+For application critical requests it can be a good idea to retry failed requests to the responsible services.
+
+Occasionaly target server can have high latency for a short period of time, or in the case of a stack of servers, one server can be having issues
+and retrying the request will allow perron to attempt to access one of the other servers that currently aren't facing issues.
+
+By default `perron` has retry logic implemented, but configured to perform 0 retries. Internally `perron` uses [node-retry](https://github.com/tim-kos/node-retry) to handle the retry logic
+and configuration. All of the existing options provided by `node-retry` can be passed via configuration options through `perron`.
+
+There is a shouldRetry function which can be defined in any way by the consumer and is used in the try logic to determine whether to attempt the retries or not depending on the type of error and the original request object.
+If the function returns true and the number of retries hasn't been exceeded, the request can be retried.
+
+There is also an onRetry function which can be defined by the user of `perron`. This function is called every time a retry request will be triggered.
+It is provided the currentAttempt, the error that is causing the retry and the original request params.
+
+The first time onRetry gets called, the value of currentAttempt will be 2. This is because the first initial request is counted as the first attempt, and the first retry attempted will then be the second request.
+
+```js
+const {ServiceClient} = require('perron');
+
+const catWatch = new ServiceClient({
+    hostname: 'catwatch.opensource.zalan.do',
+    retryOptions: {
+        retries: 1,
+        factor: 2,
+        minTimeout: 200,
+        maxTimeout: 400,
+        randomize: true,
+        shouldRetry(err, req) {
+            return (err && err.response && err.response.statusCode >= 500);
+        },
+        onRetry(currentAttempt, err, req) {
+            console.log('Retry attempt #' + currentAttempt + ' for ' + req.path + ' due to ' + err);
+        }
+    }
 });
 ```
 
@@ -118,7 +175,7 @@ It's quite often necessary to do some pre- or post-processing of the request. Fo
 
 By default, every instance of `perron` includes a `treat5xxAsError` filter, but you can specify which filters should be use by providing a `filters` options when constructing an instance. This options expects an array of filter object and is *not* automatically merged with the default ones, so be sure to use `concat` if you want to keep the default filters as well.
 
-There isn't a separate request and response filter chains, so given that we have filters `A`, `B` and `C` the request flow will look like this:
+There aren't separate request and response filter chains, so given that we have filters `A`, `B` and `C` the request flow will look like this:
 
 ```
 A.request ---> B.request ---> C.request ---|
@@ -135,9 +192,9 @@ If corresponding `request` or `response` method is missing in the filter, it is 
 Let's say that we want to inject a custom header of the request. This is really easy to do in a request filter:
 
 ```js
-const ServiceClient = require('perron');
+const {ServiceClient} = require('perron');
 
-// A separate instance of Serviz is required per host
+// A separate instance of ServiceClient is required per host
 const catWatch = new ServiceClient({
     hostname: 'catwatch.opensource.zalan.do',
     filters: [{
@@ -155,11 +212,11 @@ const catWatch = new ServiceClient({
 Sometimes it is necessary to pretend to have called the service without actually doing it. This could be useful for caching, and is also very easy to implement:
 
 ```js
-const ServiceClient = require('perron');
+const {ServiceClient} = require('perron');
 
 const getCache = require('./your-module-with-cache');
 
-// A separate instance of Serviz is required per host
+// A separate instance of ServiceClient is required per host
 const catWatch = new ServiceClient({
     hostname: 'catwatch.opensource.zalan.do',
     filters: [{
@@ -192,7 +249,7 @@ If the request is resolved in such a way, all of the pending filter in the reque
 
 ### Rejecting Request in a Filter
 
-It is possible to reject the request both in request and response filters by both throwing, or returning a rejected Promise. Doing so will be picked up by the circuit breaker, so this behavior should be reserved by the cases where the service returns `5xx` error, or the response is completely invalid (e.g. invalid JSON).
+It is possible to reject the request both in request and response filters by throwing, or by returning a rejected Promise. Doing so will be picked up by the circuit breaker, so this behavior should be reserved by the cases where the service returns `5xx` error, or the response is completely invalid (e.g. invalid JSON).
 
 ## License
 
