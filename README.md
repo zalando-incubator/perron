@@ -4,6 +4,9 @@
 # Perron
 
 A sane client for web services with a built-in circuit-breaker, support for filtering both request and response.
+```
+npm install perron --save
+```
 
 ## Breaking Change in Version 0.5
 
