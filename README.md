@@ -108,7 +108,8 @@ const {ServiceClient} = require('perron');
 
 const catWatch = new ServiceClient({
     hostname: 'catwatch.opensource.zalan.do',
-    // These are the default settings
+    // If the "circuitBreaker" settings are passed (non-falsy), they will be merged
+    // with the default options below. Otherwise, circuit breaking will be disabled
     circuitBreaker: {
         windowDuration: 10000,
         numBuckets: 10,
