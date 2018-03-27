@@ -500,31 +500,27 @@ describe('ServiceClient', () => {
       run: sinon.spy(command => command(noop, noop))
     }
 
-    const client = new ServiceClient({
-      ...clientOptions,
+    const client = new ServiceClient(Object.assign({}, clientOptions, {
       circuitBreaker: () => breaker
-    })
+    }))
 
     assert(client.getCircuitBreaker({}) === breaker)
   })
 
-  it('uses circuit breaker factory while making requests', async () => {
+  it('uses circuit breaker factory while making requests', () => {
     const noop = () => null
     const breaker = {
       run: sinon.spy(command => command(noop, noop))
     }
     const breakerFactory = sinon.spy(() => breaker)
 
-    const client = new ServiceClient({
-      ...clientOptions,
+    const client = new ServiceClient(Object.assign({}, clientOptions, {
       circuitBreaker: breakerFactory
-    })
-
-    await client.request()
-
-    assert(breaker.run.calledOnce)
-    assert(breakerFactory.calledWithMatch({
-      ...clientOptions
     }))
+
+    return client.request().then(() => {
+      assert(breaker.run.calledOnce)
+      assert(breakerFactory.calledWithMatch(clientOptions))
+    })
   })
 })
