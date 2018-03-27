@@ -131,6 +131,17 @@ const catWatch = new ServiceClient({
 });
 ```
 
+In case if you want perron to still use a circuit breaker but it has to be provided dynamically by your code on-demand you can pass `circuitBreaker` option as a function (make sure to _not_ create a circuit breaker for every request):
+
+```js
+const catWatch = new ServiceClient({
+    hostname: 'catwatch.opensource.zalan.do',
+    circuitBreaker: function (request) {
+      return somePreviouslyConstructedCB;
+    }
+});
+```
+
 ## Retry Logic
 
 For application critical requests it can be a good idea to retry failed requests to the responsible services.
