@@ -65,7 +65,7 @@ export class ServiceClientOptions {
     errorThreshold?: number,
     volumeThreshold?: number
   })
-  defaultRequestOptions?: ServiceClientRequestOptions
+  defaultRequestOptions?: Partial<ServiceClientRequestOptions>
 }
 
 /**
@@ -112,8 +112,8 @@ class ServiceClientStrictOptions {
 
     this.defaultRequestOptions = Object.assign({
       protocol: 'https:',
-      pathname: '/',
-      timeout: 2000
+      port: 443,
+      pathname: '/'
     }, options.defaultRequestOptions)
   }
 }
@@ -219,7 +219,7 @@ export class ServiceClient {
     if (typeof optionsOrUrl === 'string') {
       const parsed = url.parse(optionsOrUrl, true)
       // pathname will be overwritten in actual usage, we just guarantee a sane default
-      const defaultRequestOptions: ServiceClientRequestOptions = { pathname: '/' }
+      const defaultRequestOptions: ServiceClientRequestOptions = { pathname: '/', port: 443, protocol: 'https:' }
       const keys: ('port' | 'protocol' | 'query' | 'pathname')[] = ['port', 'protocol', 'query', 'pathname']
       keys.forEach((option) => {
         if (parsed.hasOwnProperty(option)) {
