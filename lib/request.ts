@@ -8,8 +8,11 @@ const getInterval = (time: [number, number]): number => {
   return Math.round((diff[0] * 1000) + (diff[1] / 1000000))
 }
 
+
 export interface ServiceClientRequestOptions extends RequestOptions {
+  protocol: string
   pathname: string
+  port: number
   query?: object
   timing?: boolean
   dropRequestAfter?: number
@@ -32,10 +35,6 @@ export type Timings = {lookup: number, socket: number, connect: number, response
 export type TimingPhases = {wait: number, dns: number, tcp: number, firstByte: number, download: number, total: number}
 
 export const request = (options: ServiceClientRequestOptions): Promise<ServiceClientResponse> => {
-  options = Object.assign({
-    protocol: 'https:'
-  }, options)
-
   if ('pathname' in options && !('path' in options)) {
     if ('query' in options) {
       options.path = `${options.pathname}?${querystring.stringify(options.query)}`
