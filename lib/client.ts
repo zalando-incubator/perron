@@ -11,6 +11,25 @@ const CircuitBreaker = require('circuit-breaker-js')
  * A request filter may introduce one or both functions in this interface. For more information
  * regarding request filters, refer to the readme of this project.
  */
+
+/**
+ * Defines options used by circuit-breaker-js
+ */
+export interface CircuitBreakerOptions {
+  windowDuration?: number
+  numBuckets?: number
+  timeoutDuration?: number
+  errorThreshold?: number
+  volumeThreshold?: number
+}
+
+/**
+ * This interface defines factory function for getting a circuit breaker
+ */
+export interface CircuitBreakerFactory {
+  (params: ServiceClientRequestOptions): any
+}
+
 export interface ServiceClientRequestFilter {
   /**
    * This callback is called before the requests is done.
@@ -58,13 +77,7 @@ export class ServiceClientOptions {
     shouldRetry?: (err?: Error, req?: ServiceClientRequestOptions) => boolean
     onRetry?: (currentAttempt?: number, err?: Error, req?: ServiceClientRequestOptions) => void
   }
-  circuitBreaker?: (false | {
-    windowDuration?: number,
-    numBuckets?: number,
-    timeoutDuration?: number,
-    errorThreshold?: number,
-    volumeThreshold?: number
-  })
+  circuitBreaker?: (false | CircuitBreakerOptions | CircuitBreakerFactory)
   defaultRequestOptions?: ServiceClientRequestOptions
 }
 
@@ -203,9 +216,13 @@ const requestWithFilters = (client: ServiceClient, params: ServiceClientRequestO
     .catch((err) => wrapFailedError(client, ServiceClient.RESPONSE_FILTER_FAILED, err, responseThunk))
 }
 
+const noop = () => {/* do nothing */ }
+const noopBreaker = { run (command: Function) { command(noop, noop) } }
+
 export class ServiceClient {
 
-  private breaker: any
+  private breaker?: any
+  private breakerFactory?: any
   private options: ServiceClientStrictOptions
   public name: string
 
@@ -234,7 +251,7 @@ export class ServiceClient {
       options = optionsOrUrl
     }
 
-    if (options.circuitBreaker) {
+    if (typeof options.circuitBreaker === 'object') {
       const breakerOptions = Object.assign({
         windowDuration: 10000,
         numBuckets: 10,
@@ -243,13 +260,30 @@ export class ServiceClient {
         volumeThreshold: 10
       }, options.circuitBreaker)
       this.breaker = new CircuitBreaker(breakerOptions)
-    } else {
-      const noop = () => {/* do nothing */}
-      this.breaker = { run (command: Function) { command(noop, noop) } }
+    }
+
+    if (typeof options.circuitBreaker === 'function') {
+      this.breakerFactory = options.circuitBreaker
     }
 
     this.options = new ServiceClientStrictOptions(options)
     this.name = options.name || options.hostname
+  }
+
+  /**
+   * Return an instance of a CircuitBreaker based on params.
+   * Choses between a factory and a single static breaker
+   */
+  getCircuitBreaker (params: ServiceClientRequestOptions) {
+    if (this.breaker) {
+      return this.breaker
+    }
+
+    if (this.breakerFactory) {
+      return this.breakerFactory(params)
+    }
+
+    return noopBreaker
   }
 
   /**
@@ -286,25 +320,27 @@ export class ServiceClient {
     const operation = retry.operation(opts)
     const client: ServiceClient = this
 
+    const breaker = this.getCircuitBreaker(params)
+
     return new Promise<ServiceClientResponse>((resolve, reject) => operation.attempt((currentAttempt: number) => {
-      this.breaker.run((success: () => void, failure: () => void) => {
+      breaker.run((success: () => void, failure: () => void) => {
         return requestWithFilters(client, params, this.options.filters || [])
-            .then((result: ServiceClientResponse) => {
-              success()
-              resolve(result)
-            })
-            .catch((error: Error) => {
-              failure()
-              if (!shouldRetry(error, params)) {
-                reject(error)
-                return
-              }
-              if (!operation.retry(error)) {
-                reject(error)
-                return
-              }
-              onRetry(currentAttempt + 1, error, params)
-            })
+          .then((result: ServiceClientResponse) => {
+            success()
+            resolve(result)
+          })
+          .catch((error: Error) => {
+            failure()
+            if (!shouldRetry(error, params)) {
+              reject(error)
+              return
+            }
+            if (!operation.retry(error)) {
+              reject(error)
+              return
+            }
+            onRetry(currentAttempt + 1, error, params)
+          })
       },
         () => {
           reject(new ServiceClientError(new Error(), ServiceClient.CIRCUIT_OPEN, undefined, client.name))
