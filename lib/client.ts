@@ -78,7 +78,7 @@ export class ServiceClientOptions {
     onRetry?: (currentAttempt?: number, err?: Error, req?: ServiceClientRequestOptions) => void
   }
   circuitBreaker?: (false | CircuitBreakerOptions | CircuitBreakerFactory)
-  defaultRequestOptions?: ServiceClientRequestOptions
+  defaultRequestOptions?: Partial<ServiceClientRequestOptions>
 }
 
 /**
