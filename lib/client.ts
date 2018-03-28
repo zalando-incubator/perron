@@ -1,11 +1,11 @@
 import { ServiceClientRequestOptions, ServiceClientResponse, request } from './request'
+import * as CircuitBreaker from 'circuit-breaker-js'
 import * as url from 'url'
 
 export { ServiceClientResponse, ServiceClientRequestOptions }
 
 // There are not good d.ts files available. Just using vanilla require here is less confusing  to tsc.
 const retry = require('retry')
-const CircuitBreaker = require('circuit-breaker-js')
 
 /**
  * A request filter may introduce one or both functions in this interface. For more information
@@ -27,7 +27,7 @@ export interface CircuitBreakerOptions {
  * This interface defines factory function for getting a circuit breaker
  */
 export interface CircuitBreakerFactory {
-  (params: ServiceClientRequestOptions): any
+  (params: ServiceClientRequestOptions): CircuitBreaker
 }
 
 export interface ServiceClientRequestFilter {
@@ -217,12 +217,18 @@ const requestWithFilters = (client: ServiceClient, params: ServiceClientRequestO
 }
 
 const noop = () => {/* do nothing */ }
-const noopBreaker = { run (command: Function) { command(noop, noop) } }
+const noopBreaker: CircuitBreaker = {
+  run (command) { command(noop, noop) },
+  forceClose: () => null,
+  forceOpen: () => null,
+  unforce: () => null,
+  isOpen: () => true
+}
 
 export class ServiceClient {
 
-  private breaker?: any
-  private breakerFactory?: any
+  private breaker?: CircuitBreaker
+  private breakerFactory?: CircuitBreakerFactory
   private options: ServiceClientStrictOptions
   public name: string
 
@@ -274,7 +280,7 @@ export class ServiceClient {
    * Return an instance of a CircuitBreaker based on params.
    * Choses between a factory and a single static breaker
    */
-  getCircuitBreaker (params: ServiceClientRequestOptions) {
+  getCircuitBreaker (params: ServiceClientRequestOptions): CircuitBreaker {
     if (this.breaker) {
       return this.breaker
     }

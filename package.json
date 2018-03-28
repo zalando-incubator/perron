@@ -25,6 +25,7 @@
   "author": "Team Pathfinder <team-pathfinder@zalando.de>",
   "license": "MIT",
   "devDependencies": {
+    "@types/circuit-breaker-js": "0.0.1",
     "@types/mocha": "2.2.44",
     "@types/node": "8.0.54",
     "eslint": "4.12.1",
