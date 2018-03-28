@@ -222,7 +222,7 @@ const noopBreaker: CircuitBreaker = {
   forceClose: () => null,
   forceOpen: () => null,
   unforce: () => null,
-  isOpen: () => true
+  isOpen: () => false
 }
 
 export class ServiceClient {
