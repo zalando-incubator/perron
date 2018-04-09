@@ -8,11 +8,6 @@ export { ServiceClientResponse, ServiceClientRequestOptions }
 const retry = require('retry')
 
 /**
- * A request filter may introduce one or both functions in this interface. For more information
- * regarding request filters, refer to the readme of this project.
- */
-
-/**
  * Defines options used by circuit-breaker-js
  */
 export interface CircuitBreakerOptions {
@@ -21,6 +16,15 @@ export interface CircuitBreakerOptions {
   timeoutDuration?: number
   errorThreshold?: number
   volumeThreshold?: number
+
+  onCircuitOpen?: (m: CircuitBreakerMetrics) => void;
+  onCircuitClose?: (m: CircuitBreakerMetrics) => void;
+}
+
+export interface CircuitBreakerMetrics {
+  totalCount: number
+  errorCount: number
+  errorPercentage: number
 }
 
 /**
@@ -30,6 +34,10 @@ export interface CircuitBreakerFactory {
   (params: ServiceClientRequestOptions): CircuitBreaker
 }
 
+/**
+ * A request filter may introduce one or both functions in this interface. For more information
+ * regarding request filters, refer to the readme of this project.
+ */
 export interface ServiceClientRequestFilter {
   /**
    * This callback is called before the requests is done.
