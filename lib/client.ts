@@ -8,26 +8,6 @@ export { ServiceClientResponse, ServiceClientRequestOptions }
 const retry = require('retry')
 
 /**
- * Defines options used by circuit-breaker-js
- */
-export interface CircuitBreakerOptions {
-  windowDuration?: number
-  numBuckets?: number
-  timeoutDuration?: number
-  errorThreshold?: number
-  volumeThreshold?: number
-
-  onCircuitOpen?: (m: CircuitBreakerMetrics) => void;
-  onCircuitClose?: (m: CircuitBreakerMetrics) => void;
-}
-
-export interface CircuitBreakerMetrics {
-  totalCount: number
-  errorCount: number
-  errorPercentage: number
-}
-
-/**
  * This interface defines factory function for getting a circuit breaker
  */
 export interface CircuitBreakerFactory {
@@ -85,7 +65,7 @@ export class ServiceClientOptions {
     shouldRetry?: (err?: Error, req?: ServiceClientRequestOptions) => boolean
     onRetry?: (currentAttempt?: number, err?: Error, req?: ServiceClientRequestOptions) => void
   }
-  circuitBreaker?: (false | CircuitBreakerOptions | CircuitBreakerFactory)
+  circuitBreaker?: (false | CircuitBreaker.Options | CircuitBreakerFactory)
   defaultRequestOptions?: Partial<ServiceClientRequestOptions>
 }
 
