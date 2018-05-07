@@ -28,8 +28,39 @@ export class ServiceClientResponse {
 
 }
 
-export type Timings = {lookup: number, socket: number, connect: number, response: number, end: number}
-export type TimingPhases = {wait: number, dns: number, tcp: number, firstByte: number, download: number, total: number}
+export type Timings = {
+  lookup?: number,
+  socket?: number,
+  connect?: number,
+  response?: number,
+  end?: number
+}
+export type TimingPhases = {
+  wait?: number,
+  dns?: number,
+  tcp?: number,
+  firstByte?: number,
+  download?: number,
+  total?: number
+}
+
+const subtract = (a?: number, b?: number): number | undefined => {
+  if (typeof a === 'number' && typeof b === 'number') {
+    return a - b
+  }
+  return undefined
+}
+
+const makeTimingPhases = (timings: Timings): TimingPhases => {
+  return {
+    wait: timings.socket,
+    dns: subtract(timings.lookup, timings.socket),
+    tcp: subtract(timings.connect, timings.lookup),
+    firstByte: subtract(timings.response, timings.connect),
+    download: subtract(timings.end, timings.response),
+    total: timings.end
+  }
+}
 
 export const request = (options: ServiceClientRequestOptions): Promise<ServiceClientResponse> => {
   options = Object.assign({
@@ -45,18 +76,26 @@ export const request = (options: ServiceClientRequestOptions): Promise<ServiceCl
   }
 
   const httpRequestFn = options.protocol === 'https:' ? httpsRequest : httpRequest
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve, originalReject) => {
     let hasRequestEnded = false
     let startTime: [number, number]
     let timings: Timings
+    let reject = originalReject
     if (options.timing) {
       startTime = process.hrtime()
       timings = {
-        lookup: -1,
-        socket: -1,
-        connect: -1,
-        response: -1,
-        end: -1
+        lookup: undefined,
+        socket: undefined,
+        connect: undefined,
+        response: undefined,
+        end: undefined
+      }
+      reject = (error: Error) => {
+        Object.assign(error, {
+          timings,
+          timingPhases: makeTimingPhases(timings)
+        })
+        originalReject(error)
       }
     }
     const request = httpRequestFn(options, (response: IncomingMessage) => {
@@ -93,14 +132,7 @@ export const request = (options: ServiceClientRequestOptions): Promise<ServiceCl
         if (options.timing) {
           timings.end = getInterval(startTime)
           serviceClientResponse.timings = timings
-          serviceClientResponse.timingPhases = {
-            wait: timings.socket,
-            dns: (timings.lookup || 0) - (timings.socket || 0),
-            tcp: timings.connect - timings.lookup,
-            firstByte: timings.response - timings.connect,
-            download: timings.end - timings.response,
-            total: timings.end
-          }
+          serviceClientResponse.timingPhases = makeTimingPhases(timings)
         }
         resolve(Object.assign(serviceClientResponse, response))
       })

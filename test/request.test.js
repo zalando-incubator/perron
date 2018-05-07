@@ -330,4 +330,38 @@ describe('request', () => {
     responseStub.emit('data', Buffer.from('hello'))
     responseStub.emit('end')
   })
+
+  it('should record timings for timeout', (done) => {
+    requestStub.abort = sinon.stub()
+    const responseStub = new ResponseStub()
+    responseStub.destroy = sinon.stub()
+    request({timing: true, dropRequestAfter: 500}).catch(error => {
+      assert.equal(error.message, 'request timeout')
+      assert(requestStub.abort.called)
+      assert.deepEqual(error.timings, {
+        lookup: 10,
+        socket: 10,
+        connect: 10,
+        response: 100,
+        end: undefined
+      })
+      assert.deepEqual(error.timingPhases, {
+        wait: 10,
+        dns: 0,
+        tcp: 0,
+        firstByte: 90,
+        download: undefined,
+        total: undefined
+      })
+      done()
+    }).catch(done)
+    const socketStub = new SocketStub(false)
+    clock.tick(10)
+    requestStub.emit('socket', socketStub)
+    clock.tick(90)
+    httpsStub.request.firstCall.args[1](responseStub)
+    clock.tick(100)
+    responseStub.emit('data', 'hello')
+    clock.tick(300)
+  })
 })
