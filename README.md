@@ -18,7 +18,7 @@ const ServiceClient = require('perron')
 
 to
 
-```
+```js
 const {ServiceClient} = require('perron')
 ```
 
