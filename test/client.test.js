@@ -133,6 +133,35 @@ describe('ServiceClient', () => {
     })
   })
 
+  it('should copy timings to custom error when request fails', () => {
+    const client = new ServiceClient(clientOptions)
+    const requestError = new Error('foobar')
+    Object.assign(requestError, {
+      timings: {
+        lookup: 1,
+        socket: 3,
+        connect: 6,
+        response: 10,
+        end: undefined
+      },
+      timingPhases: {
+        wait: 1,
+        dns: 2,
+        tcp: 3,
+        firstByte: 4,
+        download: undefined,
+        total: undefined
+      }
+    })
+    requestStub.returns(Promise.reject(requestError))
+    return client.request().catch(err => {
+      assert(err instanceof ServiceClient.Error)
+      assert.equal(err.type, ServiceClient.REQUEST_FAILED)
+      assert.deepEqual(err.timings, requestError.timings)
+      assert.deepEqual(err.timingPhases, requestError.timingPhases)
+    })
+  })
+
   it('should allow to mark request as failed in the request filter', (done) => {
     clientOptions.filters = [{
       request () {
