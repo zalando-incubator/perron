@@ -1,4 +1,10 @@
-import { ServiceClientRequestOptions, ServiceClientResponse, request } from './request'
+import {
+  ServiceClientRequestOptions,
+  ServiceClientResponse,
+  Timings,
+  TimingPhases,
+  request
+} from './request'
 import * as CircuitBreaker from 'circuit-breaker-js'
 import * as url from 'url'
 
@@ -123,6 +129,8 @@ class ServiceClientStrictOptions {
  * A custom error returned in case something goes wrong.
  */
 export class ServiceClientError extends Error {
+  timings?: Timings
+  timingPhases?: TimingPhases
   constructor (originalError: Error, public type: string, public response?: ServiceClientResponse, name: string = 'ServiceClient') {
     super(`${name}: ${type}. ${originalError.message || ''}`)
     Object.assign(this, originalError)
