@@ -14,13 +14,28 @@ describe('ServiceClient', () => {
     headers: {},
     body: '{}'
   })
-  const {ServiceClient} = proxyquire('../dist/client', {
-    './request': {
-      request: requestStub,
-      ServiceClientResponse: realRequest.ServiceClientResponse,
-      ServiceClientRequestOptions: realRequest.ServiceClientRequestOptions
-    }
+  const fakeRequest = Object.assign({}, realRequest, {
+    request: requestStub
   })
+  const {ServiceClient} = proxyquire('../dist/client', {
+    './request': fakeRequest
+  })
+  const {ErrorWithTimings} = fakeRequest
+  const timings = {
+    socket: 1,
+    lookup: 2,
+    connect: 3,
+    response: 4,
+    end: 5
+  }
+  const timingPhases = {
+    wait: 1,
+    dns: 1,
+    tcp: 1,
+    firstByte: 1,
+    download: 1,
+    total: 1
+  }
 
   beforeEach(() => {
     clientOptions = {
@@ -135,30 +150,13 @@ describe('ServiceClient', () => {
 
   it('should copy timings to custom error when request fails', () => {
     const client = new ServiceClient(clientOptions)
-    const requestError = new Error('foobar')
-    Object.assign(requestError, {
-      timings: {
-        lookup: 1,
-        socket: 3,
-        connect: 6,
-        response: 10,
-        end: undefined
-      },
-      timingPhases: {
-        wait: 1,
-        dns: 2,
-        tcp: 3,
-        firstByte: 4,
-        download: undefined,
-        total: undefined
-      }
-    })
+    const requestError = new ErrorWithTimings('foobar', timings, timingPhases)
     requestStub.returns(Promise.reject(requestError))
     return client.request().catch(err => {
       assert(err instanceof ServiceClient.Error)
       assert.equal(err.type, ServiceClient.REQUEST_FAILED)
-      assert.deepEqual(err.timings, requestError.timings)
-      assert.deepEqual(err.timingPhases, requestError.timingPhases)
+      assert.deepEqual(err.timings, timings)
+      assert.deepEqual(err.timingPhases, timingPhases)
     })
   })
 
@@ -199,11 +197,15 @@ describe('ServiceClient', () => {
     requestStub.returns(Promise.resolve({
       statusCode: 403,
       headers: {},
-      body: '{}'
+      body: '{}',
+      timings,
+      timingPhases
     }))
     client.request().catch(err => {
       assert(err instanceof ServiceClient.Error)
       assert.equal(err.type, ServiceClient.RESPONSE_FILTER_FAILED)
+      assert.deepEqual(err.timings, timings)
+      assert.deepEqual(err.timingPhases, timingPhases)
       done()
     })
   })
