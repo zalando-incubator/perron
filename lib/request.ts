@@ -44,6 +44,12 @@ export type TimingPhases = {
   total?: number
 }
 
+export class ErrorWithTimings extends Error {
+  constructor (originalError: Error, public timings: Timings, public timingPhases: TimingPhases) {
+    super(originalError.message)
+  }
+}
+
 const subtract = (a?: number, b?: number): number | undefined => {
   if (typeof a === 'number' && typeof b === 'number') {
     return a - b
@@ -91,11 +97,12 @@ export const request = (options: ServiceClientRequestOptions): Promise<ServiceCl
         end: undefined
       }
       reject = (error: Error) => {
-        Object.assign(error, {
+        const errorWithTimings = new ErrorWithTimings(
+          error,
           timings,
-          timingPhases: makeTimingPhases(timings)
-        })
-        originalReject(error)
+          makeTimingPhases(timings)
+        )
+        originalReject(errorWithTimings)
       }
     }
     const request = httpRequestFn(options, (response: IncomingMessage) => {
