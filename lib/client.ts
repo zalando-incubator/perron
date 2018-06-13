@@ -3,6 +3,7 @@ import {
   ServiceClientResponse,
   Timings,
   TimingPhases,
+  ErrorWithTimings,
   request
 } from './request'
 import * as CircuitBreaker from 'circuit-breaker-js'
@@ -134,6 +135,10 @@ export class ServiceClientError extends Error {
   constructor (originalError: Error, public type: string, public response?: ServiceClientResponse, name: string = 'ServiceClient') {
     super(`${name}: ${type}. ${originalError.message || ''}`)
     Object.assign(this, originalError)
+    if (originalError instanceof ErrorWithTimings) {
+      this.timings = originalError.timings
+      this.timingPhases = originalError.timingPhases
+    }
   }
 }
 
