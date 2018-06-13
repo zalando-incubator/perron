@@ -361,7 +361,11 @@ export class ServiceClient {
   static treat5xxAsError: ServiceClientRequestFilter = {
     response (response: ServiceClientResponse) {
       if (response.statusCode >= 500) {
-        return Promise.reject(new Error(`Response status ${response.statusCode}`))
+        let error = new Error(`Response status ${response.statusCode}`)
+        if (response.timings && response.timingPhases) {
+          error = new ErrorWithTimings(error, response.timings, response.timingPhases)
+        }
+        return Promise.reject(error)
       }
       return Promise.resolve(response)
     }
@@ -375,7 +379,11 @@ export class ServiceClient {
   static treat4xxAsError: ServiceClientRequestFilter = {
     response (response: ServiceClientResponse) {
       if (response.statusCode >= 400 && response.statusCode < 500) {
-        return Promise.reject(new Error(`Response status ${response.statusCode}`))
+        let error = new Error(`Response status ${response.statusCode}`)
+        if (response.timings && response.timingPhases) {
+          error = new ErrorWithTimings(error, response.timings, response.timingPhases)
+        }
+        return Promise.reject(error)
       }
       return Promise.resolve(response)
     }
