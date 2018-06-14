@@ -226,6 +226,21 @@ const noopBreaker: CircuitBreaker = {
   isOpen: () => false
 }
 
+const buildStatusCodeFilter = (isError: (statusCode: number) => boolean): ServiceClientRequestFilter => {
+  return {
+    response (response: ServiceClientResponse) {
+      if (isError(response.statusCode)) {
+        let error = new Error(`Response status ${response.statusCode}`)
+        if (response.timings && response.timingPhases) {
+          error = new ErrorWithTimings(error, response.timings, response.timingPhases)
+        }
+        return Promise.reject(error)
+      }
+      return Promise.resolve(response)
+    }
+  }
+}
+
 export class ServiceClient {
 
   private breaker?: CircuitBreaker
@@ -358,36 +373,16 @@ export class ServiceClient {
   /**
    * This filter will mark 5xx responses as failures. This is relevant for the circuit breaker.
    */
-  static treat5xxAsError: ServiceClientRequestFilter = {
-    response (response: ServiceClientResponse) {
-      if (response.statusCode >= 500) {
-        let error = new Error(`Response status ${response.statusCode}`)
-        if (response.timings && response.timingPhases) {
-          error = new ErrorWithTimings(error, response.timings, response.timingPhases)
-        }
-        return Promise.reject(error)
-      }
-      return Promise.resolve(response)
-    }
-  }
+  static treat5xxAsError: ServiceClientRequestFilter =
+    buildStatusCodeFilter(statusCode => (statusCode >= 500))
 
   /**
    * This filter will mark 4xx responses as failures. This is relevant for the circuit breaker.
    *
    * This is not the default behaviour!
    */
-  static treat4xxAsError: ServiceClientRequestFilter = {
-    response (response: ServiceClientResponse) {
-      if (response.statusCode >= 400 && response.statusCode < 500) {
-        let error = new Error(`Response status ${response.statusCode}`)
-        if (response.timings && response.timingPhases) {
-          error = new ErrorWithTimings(error, response.timings, response.timingPhases)
-        }
-        return Promise.reject(error)
-      }
-      return Promise.resolve(response)
-    }
-  }
+  static treat4xxAsError: ServiceClientRequestFilter =
+    buildStatusCodeFilter(statusCode => (statusCode >= 400 && statusCode < 500))
 
   static BODY_PARSE_FAILED = 'Parsing of the response body failed'
   static REQUEST_FAILED = 'HTTP Request failed'
