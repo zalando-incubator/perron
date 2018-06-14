@@ -8,6 +8,10 @@ A sane client for web services with a built-in circuit-breaker, support for filt
 npm install perron --save
 ```
 
+## Breaking Change in Version 0.6
+
+In 0.6.0 we changed the fields of `timings` and `timingPhases` on `ServiceClientResponse` to be nullable, or `undefined`able to be accurate. Previously `timings` had `-1` when a field was missing, and `timingPhases` had wrong numbers in those cases.
+
 ## Breaking Change in Version 0.5
 
 In 0.5.0 we changed the exports of the module to be forward-compatible with ES modules. If you are using CommonJS-style require calls, they need to updated from:
