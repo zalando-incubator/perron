@@ -142,7 +142,7 @@ describe("ServiceClient", () => {
     });
   });
 
-  it("should give a custom error object when request fails", () => {
+  it("should give a custom error object when makeRequest fails", () => {
     const client = new ServiceClient(clientOptions);
     const requestError = new Error("foobar");
     requestStub.returns(Promise.reject(requestError));
@@ -152,7 +152,7 @@ describe("ServiceClient", () => {
     });
   });
 
-  it("should copy timings to custom error when request fails", () => {
+  it("should copy timings to custom error when makeRequest fails", () => {
     const client = new ServiceClient(clientOptions);
     const requestError = new ErrorWithTimings("foobar", timings, timingPhases);
     requestStub.returns(Promise.reject(requestError));
@@ -164,7 +164,7 @@ describe("ServiceClient", () => {
     });
   });
 
-  it("should allow to mark request as failed in the request filter", done => {
+  it("should allow to mark makeRequest as failed in the makeRequest filter", done => {
     clientOptions.filters = [
       {
         request() {
@@ -175,7 +175,7 @@ describe("ServiceClient", () => {
     const client = new ServiceClient(clientOptions);
     client.request().catch(err => {
       assert(err instanceof ServiceClient.Error);
-      assert.equal(err.type, "Request filter marked request as failed");
+      assert.equal(err.type, "Request filter marked makeRequest as failed");
       done();
     });
   });
@@ -191,7 +191,7 @@ describe("ServiceClient", () => {
     );
     client.request().catch(err => {
       assert(err instanceof ServiceClient.Error);
-      assert.equal(err.type, "Response filter marked request as failed");
+      assert.equal(err.type, "Response filter marked makeRequest as failed");
       done();
     });
   });
@@ -268,7 +268,7 @@ describe("ServiceClient", () => {
     });
   });
 
-  it("should allow to specify request-filters to augment the request", done => {
+  it("should allow to specify makeRequest-filters to augment the makeRequest", done => {
     clientOptions.filters = [
       {
         request(request) {
@@ -284,7 +284,7 @@ describe("ServiceClient", () => {
     });
   });
 
-  it("should allow to specify a request-filters to short-circuit a response", done => {
+  it("should allow to specify a makeRequest-filters to short-circuit a response", done => {
     const headers = {
       "x-my-custom-header": "foobar"
     };
@@ -362,7 +362,7 @@ describe("ServiceClient", () => {
     });
   });
 
-  describe("request params", () => {
+  describe("makeRequest params", () => {
     const expectedDefaultRequestOptions = {
       hostname: "catwatch.opensource.zalan.do",
       protocol: "https:",
@@ -373,7 +373,7 @@ describe("ServiceClient", () => {
       pathname: "/",
       timeout: 2000
     };
-    it("should pass reasonable request params by default", () => {
+    it("should pass reasonable makeRequest params by default", () => {
       const client = new ServiceClient(clientOptions);
       return client.request().then(() => {
         assert.deepStrictEqual(
@@ -382,7 +382,7 @@ describe("ServiceClient", () => {
         );
       });
     });
-    it("should allow to pass additional params to the request", () => {
+    it("should allow to pass additional params to the makeRequest", () => {
       const client = new ServiceClient(clientOptions);
       return client.request({ foo: "bar" }).then(() => {
         assert.deepStrictEqual(
@@ -391,7 +391,7 @@ describe("ServiceClient", () => {
         );
       });
     });
-    it("should allow to override params of the request", () => {
+    it("should allow to override params of the makeRequest", () => {
       const client = new ServiceClient(clientOptions);
       return client.request({ pathname: "/foo" }).then(() => {
         assert.deepStrictEqual(
@@ -400,7 +400,7 @@ describe("ServiceClient", () => {
         );
       });
     });
-    it("should allow to specify query params of the request", () => {
+    it("should allow to specify query params of the makeRequest", () => {
       const client = new ServiceClient(clientOptions);
       return client
         .request({
@@ -417,7 +417,7 @@ describe("ServiceClient", () => {
           );
         });
     });
-    it("should allow to specify default params of the request", () => {
+    it("should allow to specify default params of the makeRequest", () => {
       const userDefaultRequestOptions = {
         pathname: "/foo",
         protocol: "http:",
@@ -496,7 +496,7 @@ describe("ServiceClient", () => {
         )
       );
       assert.equal(err instanceof ServiceClient.Error, true);
-      assert.equal(err.type, "Response filter marked request as failed");
+      assert.equal(err.type, "Response filter marked makeRequest as failed");
     });
   });
 
@@ -578,7 +578,7 @@ describe("ServiceClient", () => {
     return client.request().catch(err => {
       assert.equal(retrySpy.callCount, 0);
       assert.equal(err instanceof ServiceClient.Error, true);
-      assert.equal(err.type, "Response filter marked request as failed");
+      assert.equal(err.type, "Response filter marked makeRequest as failed");
     });
   });
 

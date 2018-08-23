@@ -86,10 +86,10 @@ function dealWithError(err) {
             break;
 
         case ServiceClient.REQUEST_FILTER_FAILED:
-            console.log('A request filter rejected the request');
+            console.log(makeRequest);
             break;
         case ServiceClient.RESPONSE_FILTER_FAILED:
-            console.log('A response filter rejected the request');
+            console.log(makeRequest);
             break;
 
         case ServiceClient.CIRCUIT_OPEN:

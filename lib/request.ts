@@ -28,12 +28,7 @@ export class ServiceClientResponse {
     public headers: IncomingHttpHeaders,
     public body: any,
     public request: ServiceClientRequestOptions
-  ) {
-    this.statusCode = statusCode;
-    this.headers = headers;
-    this.body = body;
-    this.request = request;
-  }
+  ) {}
 }
 
 export interface Timings {
@@ -80,7 +75,7 @@ const makeTimingPhases = (timings: Timings): TimingPhases => {
   };
 };
 
-export const request = (
+export const makeRequest = (
   options: ServiceClientRequestOptions
 ): Promise<ServiceClientResponse> => {
   options = {
@@ -164,7 +159,7 @@ export const request = (
           serviceClientResponse.timings = timings;
           serviceClientResponse.timingPhases = makeTimingPhases(timings);
         }
-        resolve({ ...serviceClientResponse, ...response });
+        resolve(serviceClientResponse);
       });
     });
     if (options.timing) {
@@ -198,7 +193,7 @@ export const request = (
       setTimeout(() => {
         if (!hasRequestEnded) {
           request.abort();
-          reject(new Error("request timeout"));
+          reject(new Error("makeRequest timeout"));
         }
       }, options.dropRequestAfter);
     }
