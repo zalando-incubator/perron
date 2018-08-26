@@ -11,7 +11,7 @@
     "outDir": "./dist",
     "rootDir": "./lib",
     "lib": [
-      "es2015"
+      "es2018"
     ],
     "typeRoots": ["./types", "./node_modules/@types"]
   }
