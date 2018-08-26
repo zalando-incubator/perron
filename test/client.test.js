@@ -72,10 +72,14 @@ describe("ServiceClient", () => {
   });
 
   it("should allow not parsing json body response", () => {
-    const client = new ServiceClient({
-      ...clientOptions,
-      autoParseJson: false
-    });
+    const client = new ServiceClient(
+      Object.assign(
+        {
+          autoParseJson: false
+        },
+        clientOptions
+      )
+    );
     const originalBody = JSON.stringify({ foo: "bar" });
     requestStub.returns({
       headers: {
