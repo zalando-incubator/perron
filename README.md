@@ -267,6 +267,12 @@ If the request is resolved in such a way, all of the pending filter in the reque
 
 It is possible to reject the request both in request and response filters by throwing, or by returning a rejected Promise. Doing so will be picked up by the circuit breaker, so this behavior should be reserved by the cases where the service returns `5xx` error, or the response is completely invalid (e.g. invalid JSON).
 
+### JSON Parsing
+
+By default Perron will try to parse JSON body if the `content-type` header is not set or
+it is specified as `application/json`. If you wish to disable this behavior you can use
+`autoParseJson: false` option when constructing `ServiceClient` object.
+
 ## License
 
 The MIT License

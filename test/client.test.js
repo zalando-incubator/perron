@@ -71,6 +71,23 @@ describe("ServiceClient", () => {
     });
   });
 
+  it("should allow not parsing json body response", () => {
+    const client = new ServiceClient({
+      ...clientOptions,
+      autoParseJson: false
+    });
+    const originalBody = JSON.stringify({ foo: "bar" });
+    requestStub.returns({
+      headers: {
+        "content-type": "application/x.problem+json"
+      },
+      body: originalBody
+    });
+    return client.request().then(({ body }) => {
+      assert.strictEqual(body, originalBody);
+    });
+  });
+
   it("should automatically parse response as JSON if content type is set correctly", () => {
     const client = new ServiceClient(clientOptions);
     const originalBody = { foo: "bar" };

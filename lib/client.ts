@@ -65,6 +65,7 @@ export class ServiceClientOptions {
    * should the service client record request timings?
    */
   public timing?: boolean;
+  public autoParseJson?: boolean;
   public retryOptions?: {
     retries?: number;
     factor?: number;
@@ -92,6 +93,7 @@ class ServiceClientStrictOptions {
   public hostname: string;
   public filters: ServiceClientRequestFilter[];
   public timing: boolean;
+  public autoParseJson: boolean;
   public retryOptions: {
     retries: number;
     factor: number;
@@ -117,6 +119,8 @@ class ServiceClientStrictOptions {
       ? options.filters
       : [...ServiceClient.DEFAULT_FILTERS];
     this.timing = Boolean(options.timing);
+    const autoParseJson = options.autoParseJson;
+    this.autoParseJson = autoParseJson === undefined ? true : autoParseJson;
     this.retryOptions = {
       factor: 2,
       maxTimeout: 400,
@@ -238,7 +242,8 @@ const unwindResponseFilters = (
 const requestWithFilters = (
   client: ServiceClient,
   requestOptions: ServiceClientRequestOptions,
-  filters: ServiceClientRequestFilter[]
+  filters: ServiceClientRequestFilter[],
+  autoParseJson: boolean
 ): Promise<ServiceClientResponse> => {
   const pendingResponseFilters: ServiceClientRequestFilter[] = [];
 
@@ -276,7 +281,10 @@ const requestWithFilters = (
     .then(
       rawResponse => {
         response = rawResponse;
-        return decodeResponse(client, rawResponse);
+        if (autoParseJson) {
+          return decodeResponse(client, rawResponse);
+        }
+        return rawResponse;
       },
       err =>
         wrapFailedError(
@@ -503,7 +511,12 @@ export class ServiceClient {
       operation.attempt((currentAttempt: number) => {
         breaker.run(
           (success: () => void, failure: () => void) => {
-            return requestWithFilters(this, params, this.options.filters || [])
+            return requestWithFilters(
+              this,
+              params,
+              this.options.filters || [],
+              this.options.autoParseJson
+            )
               .then((result: ServiceClientResponse) => {
                 success();
                 resolve(result);
