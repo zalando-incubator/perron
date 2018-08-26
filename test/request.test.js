@@ -41,7 +41,7 @@ describe("request", () => {
   const httpStub = {};
   const httpsStub = {};
 
-  let request = proxyquire("../dist/makeRequest", {
+  let request = proxyquire("../dist/request", {
     http: httpStub,
     https: httpsStub
   }).request;
@@ -103,14 +103,14 @@ describe("request", () => {
     assert(typeof request().then, "function");
   });
 
-  it("should reject a promise if makeRequest errors out", done => {
+  it("should reject a promise if request errors out", done => {
     request().catch(() => {
       done();
     });
     requestStub.emit("error");
   });
 
-  it("should use the body of the makeRequest if one is provided", () => {
+  it("should use the body of the request if one is provided", () => {
     requestStub.write = sinon.spy();
     request({
       body: "foobar"
@@ -233,7 +233,7 @@ describe("request", () => {
     responseStub.emit("end");
   });
 
-  it("should attach the makeRequest options to the response", done => {
+  it("should attach the request options to the response", done => {
     requestStub.abort = sinon.stub();
     const responseStub = new ResponseStub();
     const requestOptions = {
@@ -258,7 +258,7 @@ describe("request", () => {
     responseStub.destroy = sinon.stub();
     request({ dropRequestAfter: 500 })
       .catch(error => {
-        assert.equal(error.message, "makeRequest timeout");
+        assert.equal(error.message, "request timeout");
         assert(requestStub.abort.called);
         done();
       })
@@ -275,7 +275,7 @@ describe("request", () => {
     httpsStub.request.returns(requestStub);
     request({ dropRequestAfter: 500 })
       .catch(error => {
-        assert.equal(error.message, "makeRequest timeout");
+        assert.equal(error.message, "request timeout");
         assert(requestStub.abort.calledOnce);
         done();
       })
@@ -357,7 +357,7 @@ describe("request", () => {
     responseStub.destroy = sinon.stub();
     request({ timing: true, dropRequestAfter: 500 })
       .catch(error => {
-        assert.equal(error.message, "makeRequest timeout");
+        assert.equal(error.message, "request timeout");
         assert(requestStub.abort.called);
         assert.deepEqual(error.timings, {
           lookup: 10,

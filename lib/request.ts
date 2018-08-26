@@ -27,6 +27,7 @@ export class ServiceClientResponse {
     public statusCode: number,
     public headers: IncomingHttpHeaders,
     public body: any,
+    // tslint:disable-next-line
     public request: ServiceClientRequestOptions
   ) {}
 }
@@ -75,7 +76,7 @@ const makeTimingPhases = (timings: Timings): TimingPhases => {
   };
 };
 
-export const makeRequest = (
+export const request = (
   options: ServiceClientRequestOptions
 ): Promise<ServiceClientResponse> => {
   options = {
@@ -118,52 +119,56 @@ export const makeRequest = (
         originalReject(errorWithTimings);
       };
     }
-    const request = httpRequestFn(options, (response: IncomingMessage) => {
-      if (options.timing) {
-        if (timings.lookup === undefined) {
-          timings.lookup = timings.socket;
-        }
-        if (timings.connect === undefined) {
-          timings.connect = timings.socket;
-        }
-        timings.response = getInterval(startTime);
-      }
-      let bodyStream;
-      const chunks: Buffer[] = [];
-      const encoding = response.headers && response.headers["content-encoding"];
-      if (encoding === "gzip" || encoding === "deflate") {
-        response.on("error", reject);
-        bodyStream = response.pipe(zlib.createUnzip());
-      } else {
-        bodyStream = response;
-      }
-      bodyStream.on("error", reject);
-      bodyStream.on("data", chunk => {
-        if (chunk instanceof Buffer) {
-          chunks.push(chunk);
-        } else {
-          chunks.push(Buffer.from(chunk, "utf-8"));
-        }
-      });
-      bodyStream.on("end", () => {
-        const body = Buffer.concat(chunks).toString("utf8");
-        hasRequestEnded = true;
-        const serviceClientResponse = new ServiceClientResponse(
-          response.statusCode || 0,
-          response.headers,
-          body,
-          options
-        );
+    const requestObject = httpRequestFn(
+      options,
+      (response: IncomingMessage) => {
         if (options.timing) {
-          timings.end = getInterval(startTime);
-          serviceClientResponse.timings = timings;
-          serviceClientResponse.timingPhases = makeTimingPhases(timings);
+          if (timings.lookup === undefined) {
+            timings.lookup = timings.socket;
+          }
+          if (timings.connect === undefined) {
+            timings.connect = timings.socket;
+          }
+          timings.response = getInterval(startTime);
         }
-        resolve(serviceClientResponse);
-      });
-    });
+        let bodyStream;
+        const chunks: Buffer[] = [];
+        const encoding =
+          response.headers && response.headers["content-encoding"];
+        if (encoding === "gzip" || encoding === "deflate") {
+          response.on("error", reject);
+          bodyStream = response.pipe(zlib.createUnzip());
+        } else {
+          bodyStream = response;
+        }
+        bodyStream.on("error", reject);
+        bodyStream.on("data", chunk => {
+          if (chunk instanceof Buffer) {
+            chunks.push(chunk);
+          } else {
+            chunks.push(Buffer.from(chunk, "utf-8"));
+          }
+        });
+        bodyStream.on("end", () => {
+          const body = Buffer.concat(chunks).toString("utf8");
+          hasRequestEnded = true;
+          const serviceClientResponse = new ServiceClientResponse(
+            response.statusCode || 0,
+            response.headers,
+            body,
+            options
+          );
+          if (options.timing) {
+            timings.end = getInterval(startTime);
+            serviceClientResponse.timings = timings;
+            serviceClientResponse.timingPhases = makeTimingPhases(timings);
+          }
+          resolve(serviceClientResponse);
+        });
+      }
+    );
     if (options.timing) {
-      request.once("socket", socket => {
+      requestObject.once("socket", socket => {
         timings.socket = getInterval(startTime);
         if (socket.connecting) {
           const onLookUp = () => {
@@ -174,7 +179,7 @@ export const makeRequest = (
           };
           socket.once("lookup", onLookUp);
           socket.once("connect", onConnect);
-          request.once("error", () => {
+          requestObject.once("error", () => {
             socket.removeListener("lookup", onLookUp);
             socket.removeListener("connect", onConnect);
           });
@@ -184,22 +189,22 @@ export const makeRequest = (
         }
       });
     }
-    request.on("error", reject);
-    request.on("timeout", () => {
-      request.abort();
+    requestObject.on("error", reject);
+    requestObject.on("timeout", () => {
+      requestObject.abort();
       reject(new Error("socket timeout"));
     });
     if (options.dropRequestAfter) {
       setTimeout(() => {
         if (!hasRequestEnded) {
-          request.abort();
-          reject(new Error("makeRequest timeout"));
+          requestObject.abort();
+          reject(new Error("request timeout"));
         }
       }, options.dropRequestAfter);
     }
     if (options.body) {
-      request.write(options.body);
+      requestObject.write(options.body);
     }
-    request.end();
+    requestObject.end();
   });
 };

@@ -3,7 +3,7 @@ import * as retry from "retry";
 import * as url from "url";
 import {
   ErrorWithTimings,
-  makeRequest,
+  request,
   ServiceClientRequestOptions,
   ServiceClientResponse,
   TimingPhases,
@@ -20,16 +20,16 @@ export type CircuitBreakerFactory = (
 ) => CircuitBreaker;
 
 /**
- * A makeRequest filter may introduce one or both functions in this interface. For more information
- * regarding makeRequest filters, refer to the readme of this project.
+ * A request filter may introduce one or both functions in this interface. For more information
+ * regarding request filters, refer to the readme of this project.
  */
 export interface ServiceClientRequestFilter {
   /**
    * This callback is called before the requests is done.
-   * You can short-circuit the makeRequest by both returning
+   * You can short-circuit the request by both returning
    * a ServiceClient.Response object which is helpful for
    * implementing caching or mocking. You could also
-   * fail the makeRequest by throwing an Error.
+   * fail the request by throwing an Error.
    * @throws {Error}
    */
   request?: (
@@ -62,7 +62,7 @@ export class ServiceClientOptions {
    */
   public filters?: ServiceClientRequestFilter[];
   /**
-   * should the service client record makeRequest timings?
+   * should the service client record request timings?
    */
   public timing?: boolean;
   public retryOptions?: {
@@ -233,7 +233,7 @@ const unwindResponseFilters = (
 };
 
 /**
- * Actually performs the makeRequest and applies the available filters in their respective phases.
+ * Actually performs the request and applies the available filters in their respective phases.
  */
 const requestWithFilters = (
   client: ServiceClient,
@@ -271,7 +271,7 @@ const requestWithFilters = (
       paramsOrResponse =>
         paramsOrResponse instanceof ServiceClientResponse
           ? paramsOrResponse
-          : makeRequest(paramsOrResponse)
+          : request(paramsOrResponse)
     )
     .then(
       rawResponse => {
@@ -356,11 +356,11 @@ export class ServiceClient {
   public static BODY_PARSE_FAILED = "Parsing of the response body failed";
   public static REQUEST_FAILED = "HTTP Request failed";
   public static REQUEST_FILTER_FAILED =
-    "Request filter marked makeRequest as failed";
+    "Request filter marked request as failed";
   public static RESPONSE_FILTER_FAILED =
-    "Response filter marked makeRequest as failed";
+    "Response filter marked request as failed";
   public static CIRCUIT_OPEN =
-    "Circuit breaker is open and prevented the makeRequest";
+    "Circuit breaker is open and prevented the request";
 
   /**
    * Default list of post-filters which includes
@@ -462,7 +462,7 @@ export class ServiceClient {
   }
 
   /**
-   * Perform a makeRequest to the service using given @{link ServiceClientRequestOptions}, returning the result in a promise.
+   * Perform a request to the service using given @{link ServiceClientRequestOptions}, returning the result in a promise.
    */
   public request(
     userParams: ServiceClientRequestOptions
