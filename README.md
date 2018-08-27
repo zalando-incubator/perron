@@ -81,15 +81,17 @@ function dealWithError(err) {
         case ServiceClient.REQUEST_FAILED:
             console.log('HTTP Request failed');
             break;
+
         case ServiceClient.BODY_PARSE_FAILED:
             console.log('Got a JSON response but parsing it failed');
             break;
 
         case ServiceClient.REQUEST_FILTER_FAILED:
-            console.log(makeRequest);
+            console.log('Request filter failed');
             break;
+
         case ServiceClient.RESPONSE_FILTER_FAILED:
-            console.log(makeRequest);
+            console.log('Response filter failed');
             break;
 
         case ServiceClient.CIRCUIT_OPEN:
