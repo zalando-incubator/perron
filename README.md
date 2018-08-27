@@ -81,15 +81,17 @@ function dealWithError(err) {
         case ServiceClient.REQUEST_FAILED:
             console.log('HTTP Request failed');
             break;
+
         case ServiceClient.BODY_PARSE_FAILED:
             console.log('Got a JSON response but parsing it failed');
             break;
 
         case ServiceClient.REQUEST_FILTER_FAILED:
-            console.log('A request filter rejected the request');
+            console.log('Request filter failed');
             break;
+
         case ServiceClient.RESPONSE_FILTER_FAILED:
-            console.log('A response filter rejected the request');
+            console.log('Response filter failed');
             break;
 
         case ServiceClient.CIRCUIT_OPEN:
@@ -266,6 +268,12 @@ If the request is resolved in such a way, all of the pending filter in the reque
 ### Rejecting Request in a Filter
 
 It is possible to reject the request both in request and response filters by throwing, or by returning a rejected Promise. Doing so will be picked up by the circuit breaker, so this behavior should be reserved by the cases where the service returns `5xx` error, or the response is completely invalid (e.g. invalid JSON).
+
+### JSON Parsing
+
+By default Perron will try to parse JSON body if the `content-type` header is not set or
+it is specified as `application/json`. If you wish to disable this behavior you can use
+`autoParseJson: false` option when constructing `ServiceClient` object.
 
 ## License
 
