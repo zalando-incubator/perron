@@ -1,6 +1,6 @@
 {
   "name": "perron",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "A sane client for web services",
   "engines": {
     "node": ">=6.0.0"
