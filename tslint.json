@@ -3,8 +3,11 @@
     "tslint:latest",
     "tslint-config-prettier"
   ],
+  "jsRules": true,
   "rulesDirectory": ["tslint-plugin-prettier"],
   "rules": {
+    "no-unused-expression": false,
+    "no-empty": false,
     "prettier": true,
     "interface-name": false,
     "object-literal-sort-keys": false,
