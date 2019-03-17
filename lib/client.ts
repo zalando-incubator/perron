@@ -231,8 +231,8 @@ const unwindResponseFilters = (
   promise: Promise<ServiceClientResponse>,
   filter: ServiceClientRequestFilter
 ): Promise<ServiceClientResponse> => {
-  return promise.then(
-    params => (filter.response ? filter.response(params) : params)
+  return promise.then(params =>
+    filter.response ? filter.response(params) : params
   );
 };
 
@@ -272,11 +272,10 @@ const requestWithFilters = (
     .catch((err: Error) =>
       wrapFailedError(client, ServiceClient.REQUEST_FILTER_FAILED, err)
     )
-    .then(
-      paramsOrResponse =>
-        paramsOrResponse instanceof ServiceClientResponse
-          ? paramsOrResponse
-          : request(paramsOrResponse)
+    .then(paramsOrResponse =>
+      paramsOrResponse instanceof ServiceClientResponse
+        ? paramsOrResponse
+        : request(paramsOrResponse)
     )
     .then(
       rawResponse => {
