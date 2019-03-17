@@ -86,9 +86,11 @@ export const request = (
 
   if ("pathname" in options && !("path" in options)) {
     if ("query" in options) {
-      options.path = `${options.pathname}?${querystring.stringify(
-        options.query
-      )}`;
+      let query = querystring.stringify(options.query);
+      if (query) {
+        query = "?" + query;
+      }
+      options.path = `${options.pathname}${query}`;
     } else {
       options.path = options.pathname;
     }
