@@ -99,6 +99,14 @@ describe("request", () => {
     assert.equal(httpsStub.request.firstCall.args[0].path, "/?foo=bar&buz=42");
   });
 
+  it("should not add a question mark with empty query", () => {
+    request({
+      query: {},
+      pathname: "/foo"
+    });
+    assert.equal(httpsStub.request.firstCall.args[0].path, "/foo");
+  });
+
   it("should return a promise", () => {
     assert(typeof request().then, "function");
   });
