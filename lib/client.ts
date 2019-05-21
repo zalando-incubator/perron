@@ -166,6 +166,7 @@ export class ServiceClientError extends Error {
     name: string = "ServiceClient"
   ) {
     super(`${name}: ${type}. ${originalError.message || ""}`);
+    // Does not copy `message` from the original error
     Object.assign(this, originalError);
     if (originalError instanceof ErrorWithTimings) {
       this.timings = originalError.timings;
@@ -331,7 +332,7 @@ const buildStatusCodeFilter = (
         let error = new Error(`Response status ${response.statusCode}`);
         if (response.timings && response.timingPhases) {
           error = new ErrorWithTimings(
-            { name: "", ...error },
+            error,
             response.timings,
             response.timingPhases
           );
