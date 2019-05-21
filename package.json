@@ -1,9 +1,9 @@
 {
   "name": "perron",
-  "version": "0.7.2",
+  "version": "0.8.0",
   "description": "A sane client for web services",
   "engines": {
-    "node": ">=6.0.0"
+    "node": ">=8.0.0"
   },
   "main": "dist/client.js",
   "scripts": {
