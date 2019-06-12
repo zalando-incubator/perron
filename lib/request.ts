@@ -60,22 +60,40 @@ export interface TimingPhases {
   total?: number;
 }
 
-export class ErrorWithTimings extends Error {
-  constructor(
-    originalError: Error,
-    public timings: Timings,
-    public timingPhases: TimingPhases
-  ) {
-    super(originalError.message);
-  }
-}
-
 const subtract = (a?: number, b?: number): number | undefined => {
   if (typeof a === "number" && typeof b === "number") {
     return a - b;
   }
   return undefined;
 };
+
+export class RequestError extends Error {
+  public timings?: Timings;
+  public timingPhases?: TimingPhases;
+  public requestOptions: ServiceClientRequestOptions;
+  constructor(
+    message: string,
+    requestOptions: ServiceClientRequestOptions,
+    timings?: Timings
+  ) {
+    super(message);
+    this.requestOptions = requestOptions;
+    this.timings = timings;
+    this.timingPhases = timings && makeTimingPhases(timings);
+  }
+}
+
+export class ConnectionTimeoutError extends RequestError {
+  constructor(requestOptions: ServiceClientRequestOptions, timings?: Timings) {
+    super("socket timeout", requestOptions, timings);
+  }
+}
+
+export class UserTimeoutError extends RequestError {
+  constructor(requestOptions: ServiceClientRequestOptions, timings?: Timings) {
+    super("request timeout", requestOptions, timings);
+  }
+}
 
 const makeTimingPhases = (timings: Timings): TimingPhases => {
   return {
@@ -110,11 +128,10 @@ export const request = (
 
   const httpRequestFn =
     options.protocol === "https:" ? httpsRequest : httpRequest;
-  return new Promise((resolve, originalReject) => {
+  return new Promise((resolve, reject: (error: RequestError) => void) => {
     let hasRequestEnded = false;
     let startTime: [number, number];
     let timings: Timings;
-    let reject = originalReject;
     if (options.timing) {
       startTime = process.hrtime();
       timings = {
@@ -124,15 +141,8 @@ export const request = (
         response: undefined,
         end: undefined
       };
-      reject = (error: Error) => {
-        const errorWithTimings = new ErrorWithTimings(
-          error,
-          timings,
-          makeTimingPhases(timings)
-        );
-        originalReject(errorWithTimings);
-      };
     }
+
     const requestObject = httpRequestFn(
       options,
       (response: IncomingMessage) => {
@@ -203,16 +213,18 @@ export const request = (
         }
       });
     }
-    requestObject.on("error", reject);
+    requestObject.on("error", error =>
+      reject(new RequestError(error.message, options, timings))
+    );
     requestObject.on("timeout", () => {
       requestObject.abort();
-      reject(new Error("socket timeout"));
+      reject(new ConnectionTimeoutError(options, timings));
     });
     if (options.dropRequestAfter) {
       setTimeout(() => {
         if (!hasRequestEnded) {
           requestObject.abort();
-          reject(new Error("request timeout"));
+          reject(new UserTimeoutError(options, timings));
         }
       }, options.dropRequestAfter);
     }

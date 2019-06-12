@@ -2,7 +2,6 @@ import * as CircuitBreaker from "circuit-breaker-js";
 import * as retry from "retry";
 import * as url from "url";
 import {
-  ErrorWithTimings,
   request,
   ServiceClientRequestOptions,
   ServiceClientResponse,
@@ -168,10 +167,15 @@ export abstract class ServiceClientError extends Error {
     super(`${name}: ${type}. ${originalError.message || ""}`);
     // Does not copy `message` from the original error
     Object.assign(this, originalError);
-    if (originalError instanceof ErrorWithTimings) {
-      this.timings = originalError.timings;
-      this.timingPhases = originalError.timingPhases;
-    }
+    const timingSource: {
+      timings?: Timings;
+      timingPhases?: TimingPhases;
+      // This is necessary to shut up TypeScript as otherwise it treats
+      // types with all optional properties differently
+      constructor: Function;
+    } = response || originalError;
+    this.timings = timingSource.timings;
+    this.timingPhases = timingSource.timingPhases;
   }
 }
 
@@ -321,15 +325,9 @@ const buildStatusCodeFilter = (
   return {
     response(response: ServiceClientResponse) {
       if (isError(response.statusCode)) {
-        let error = new Error(`Response status ${response.statusCode}`);
-        if (response.timings && response.timingPhases) {
-          error = new ErrorWithTimings(
-            error,
-            response.timings,
-            response.timingPhases
-          );
-        }
-        return Promise.reject(error);
+        return Promise.reject(
+          new Error(`Response status ${response.statusCode}`)
+        );
       }
       return Promise.resolve(response);
     }

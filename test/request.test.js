@@ -111,11 +111,10 @@ describe("request", () => {
     assert(typeof request().then, "function");
   });
 
-  it("should reject a promise if request errors out", done => {
-    request().catch(() => {
-      done();
-    });
-    requestStub.emit("error");
+  it("should reject a promise if request errors out", () => {
+    const requestPromise = request();
+    requestStub.emit("error", new Error("foo"));
+    return requestPromise.catch(err => assert.equal(err.message, "foo"));
   });
 
   it("should use the body of the request if one is provided", () => {
