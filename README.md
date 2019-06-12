@@ -76,12 +76,15 @@ catWatch.request({
 function dealWithError(err) {
   if (err instanceof RequestFailedError) {
     console.log('HTTP Request failed');
+    console.log('Request options were', err.requestOptions);
   } else if (err instanceof BodyParseError) {
     console.log('Got a JSON response but parsing it failed');
+    console.log('Raw response was', err.response);
   } else if (err instanceof RequestFilterError) {
     console.log('Request filter failed');
   } else if (err instanceof ResponseFilterError) {
     console.log('Response filter failed');
+    console.log('Raw response was', err.response);
   } else if (err instanceof CircuitOpenError) {
     console.log('Circuit breaker is open');
   }

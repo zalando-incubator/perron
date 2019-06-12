@@ -3,6 +3,7 @@ import * as retry from "retry";
 import * as url from "url";
 import {
   request,
+  RequestError,
   ServiceClientRequestOptions,
   ServiceClientResponse,
   TimingPhases,
@@ -212,8 +213,10 @@ export class ResponseFilterError extends ServiceClientError {
 }
 
 export class RequestFailedError extends ServiceClientError {
-  constructor(originalError: Error, name: string) {
+  public requestOptions: ServiceClientRequestOptions;
+  constructor(originalError: RequestError, name: string) {
     super(originalError, ServiceClient.REQUEST_FAILED, undefined, name);
+    this.requestOptions = originalError.requestOptions;
   }
 }
 
@@ -290,7 +293,7 @@ const requestWithFilters = (
     .then(paramsOrResponse =>
       paramsOrResponse instanceof ServiceClientResponse
         ? paramsOrResponse
-        : request(paramsOrResponse).catch(error => {
+        : request(paramsOrResponse).catch((error: RequestError) => {
             throw new RequestFailedError(error, client.name);
           })
     )

@@ -27,7 +27,7 @@ describe("ServiceClient", () => {
   } = proxyquire("../dist/client", {
     "./request": fakeRequest
   });
-  const { ErrorWithTimings } = fakeRequest;
+  const { RequestError } = fakeRequest;
   const timings = {
     socket: 1,
     lookup: 2,
@@ -41,7 +41,7 @@ describe("ServiceClient", () => {
     tcp: 1,
     firstByte: 1,
     download: 1,
-    total: 1
+    total: 5
   };
 
   beforeEach(() => {
@@ -174,7 +174,7 @@ describe("ServiceClient", () => {
 
   it("should give a custom error object when request fails", () => {
     const client = new ServiceClient(clientOptions);
-    const requestError = new Error("foobar");
+    const requestError = new RequestError("foobar");
     requestStub.returns(Promise.reject(requestError));
     return client.request().catch(err => {
       assert(err instanceof ServiceClient.Error);
@@ -185,7 +185,7 @@ describe("ServiceClient", () => {
 
   it("should copy timings to custom error when request fails", () => {
     const client = new ServiceClient(clientOptions);
-    const requestError = new ErrorWithTimings("foobar", timings, timingPhases);
+    const requestError = new RequestError("foobar", {}, timings);
     requestStub.returns(Promise.reject(requestError));
     return client.request().catch(err => {
       assert(err instanceof ServiceClient.Error);
@@ -193,6 +193,17 @@ describe("ServiceClient", () => {
       assert(err instanceof RequestFailedError);
       assert.deepEqual(err.timings, timings);
       assert.deepEqual(err.timingPhases, timingPhases);
+    });
+  });
+
+  it("should copy timings to custom error when request fails", () => {
+    const client = new ServiceClient(clientOptions);
+    const requestOptions = { hostname: "foo" };
+    const requestError = new RequestError("foobar", requestOptions, timings);
+    requestStub.returns(Promise.reject(requestError));
+    return client.request().catch(err => {
+      assert(err instanceof RequestFailedError);
+      assert.deepStrictEqual(err.requestOptions, requestOptions);
     });
   });
 
@@ -347,7 +358,9 @@ describe("ServiceClient", () => {
       headers: {},
       body: "{}"
     });
-    const errorResponse = Promise.resolve(Promise.reject(new Error("timeout")));
+    const errorResponse = Promise.resolve(
+      Promise.reject(new RequestError("timeout"))
+    );
     const requests = Array.from({ length: 11 });
 
     [
@@ -548,7 +561,9 @@ describe("ServiceClient", () => {
       retries: 1,
       onRetry: retrySpy
     };
-    const errorResponse = Promise.resolve(Promise.reject(new Error("timeout")));
+    const errorResponse = Promise.resolve(
+      Promise.reject(new RequestError("timeout"))
+    );
     const requests = Array.from({ length: 11 });
 
     [
@@ -624,7 +639,7 @@ describe("ServiceClient", () => {
   it("should prepend the ServiceClient name to errors", () => {
     clientOptions.name = "TestClient";
     const client = new ServiceClient(clientOptions);
-    const requestError = new Error("foobar");
+    const requestError = new RequestError("foobar");
     requestStub.returns(Promise.reject(requestError));
     return client.request().catch(err => {
       assert.equal(err.message, "TestClient: HTTP Request failed. foobar");
@@ -633,7 +648,7 @@ describe("ServiceClient", () => {
 
   it("should default to hostname in errors if no name is specified", () => {
     const client = new ServiceClient(clientOptions);
-    const requestError = new Error("foobar");
+    const requestError = new RequestError("foobar");
     requestStub.returns(Promise.reject(requestError));
     return client.request().catch(err => {
       assert.equal(
