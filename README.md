@@ -70,34 +70,21 @@ An instance of `ServiceClient.Error` also carries additional information on type
 
 ```js
 catWatch.request({
-    path: '/projects?limit=10'
-}).then(
-    data => console.log(data),
-    dealWithError
-);
+  path: '/projects?limit=10'
+}).then(console.log, dealWithError);
 
 function dealWithError(err) {
-    switch (err.type) {
-        case ServiceClient.REQUEST_FAILED:
-            console.log('HTTP Request failed');
-            break;
-
-        case ServiceClient.BODY_PARSE_FAILED:
-            console.log('Got a JSON response but parsing it failed');
-            break;
-
-        case ServiceClient.REQUEST_FILTER_FAILED:
-            console.log('Request filter failed');
-            break;
-
-        case ServiceClient.RESPONSE_FILTER_FAILED:
-            console.log('Response filter failed');
-            break;
-
-        case ServiceClient.CIRCUIT_OPEN:
-            console.log('Circuit breaker is open');
-            break;
-    }
+  if (err instanceof RequestFailedError) {
+    console.log('HTTP Request failed');
+  } else if (err instanceof BodyParseError) {
+    console.log('Got a JSON response but parsing it failed');
+  } else if (err instanceof RequestFilterError) {
+    console.log('Request filter failed');
+  } else if (err instanceof ResponseFilterError) {
+    console.log('Response filter failed');
+  } else if (err instanceof CircuitOpenError) {
+    console.log('Circuit breaker is open');
+  }
 }
 ```
 
