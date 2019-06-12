@@ -10,16 +10,14 @@
     "prepublishOnly": "npm run test && npm run docs",
     "test": "tslint --project . && tsc && mocha test",
     "test-cov": "tslint --project . && tsc && nyc --check-coverage --lines 90 --functions 85 --branches 85 mocha test",
-    "tdd": "mocha test --watch",
-    "docs": "jsdoc2md dist/client.js > api.md"
+    "tdd": "mocha test --watch"
   },
   "repository": {
     "type": "git",
     "url": "git@github.com:zalando-incubator/perron.git"
   },
   "files": [
-    "dist/*",
-    "*.md"
+    "dist/*"
   ],
   "types": "./dist/client.d.ts",
   "author": "Team Pathfinder <team-pathfinder@zalando.de>",
@@ -31,7 +29,6 @@
     "eslint": "^5.15.2",
     "eslint-config-prettier": "^4.1.0",
     "eslint-plugin-prettier": "^3.0.1",
-    "jsdoc-to-markdown": "^4.0.1",
     "mocha": "^6.0.2",
     "nyc": "^13.3.0",
     "prettier": "^1.16.4",
