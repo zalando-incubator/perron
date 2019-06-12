@@ -407,25 +407,22 @@ export class ServiceClient {
   constructor(optionsOrUrl: ServiceClientOptions | string) {
     let options: ServiceClientOptions;
     if (typeof optionsOrUrl === "string") {
-      const parsed = url.parse(optionsOrUrl, true);
-      // pathname will be overwritten in actual usage, we just guarantee a sane default
-      const defaultRequestOptions: ServiceClientRequestOptions = {
-        pathname: "/"
-      };
-      const keys: Array<"port" | "protocol" | "query" | "pathname"> = [
-        "port",
-        "protocol",
-        "query",
-        "pathname"
-      ];
-      keys.forEach(option => {
-        if (parsed.hasOwnProperty(option)) {
-          defaultRequestOptions[option] = parsed[option];
-        }
-      });
+      const {
+        port,
+        protocol,
+        query,
+        hostname = "",
+        pathname = "/"
+      } = url.parse(optionsOrUrl, true);
       options = {
-        hostname: parsed.hostname || "",
-        defaultRequestOptions
+        hostname,
+        defaultRequestOptions: {
+          port,
+          protocol,
+          query,
+          // pathname will be overwritten in actual usage, we just guarantee a sane default
+          pathname
+        }
       };
     } else {
       options = optionsOrUrl;
