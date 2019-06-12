@@ -8,8 +8,9 @@
   "main": "dist/client.js",
   "scripts": {
     "prepublishOnly": "npm run test && npm run docs",
-    "test": "tslint --project . && tsc && mocha test",
-    "test-cov": "tslint --project . && tsc && nyc --check-coverage --lines 90 --functions 85 --branches 85 mocha test",
+    "lint": "eslint . --ext .ts,.tsx,.js",
+    "test": "npm run lint && tsc && mocha test",
+    "test-cov": "npm run lint && tsc && nyc --check-coverage --lines 90 --functions 85 --branches 85 mocha test",
     "tdd": "mocha test --watch"
   },
   "repository": {
@@ -29,14 +30,13 @@
     "eslint": "^5.16.0",
     "eslint-config-prettier": "^4.3.0",
     "eslint-plugin-prettier": "^3.1.0",
+    "@typescript-eslint/eslint-plugin": "^1.10.2",
+    "@typescript-eslint/parser": "^1.10.2",
     "mocha": "^6.1.4",
     "nyc": "^14.1.1",
     "prettier": "^1.18.2",
     "proxyquire": "^2.1.0",
     "sinon": "^7.3.2",
-    "tslint": "^5.17.0",
-    "tslint-config-prettier": "^1.18.0",
-    "tslint-plugin-prettier": "^2.0.1",
     "typescript": "^3.5.1"
   },
   "dependencies": {
