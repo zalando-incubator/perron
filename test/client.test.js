@@ -17,7 +17,14 @@ describe("ServiceClient", () => {
   const fakeRequest = Object.assign({}, realRequest, {
     request: requestStub
   });
-  const { ServiceClient } = proxyquire("../dist/client", {
+  const {
+    ServiceClient,
+    BodyParseError,
+    CircuitOpenError,
+    RequestFilterError,
+    ResponseFilterError,
+    RequestFailedError
+  } = proxyquire("../dist/client", {
     "./request": fakeRequest
   });
   const { ErrorWithTimings } = fakeRequest;
@@ -81,7 +88,7 @@ describe("ServiceClient", () => {
       )
     );
     const originalBody = JSON.stringify({ foo: "bar" });
-    requestStub.returns({
+    requestStub.resolves({
       headers: {
         "content-type": "application/x.problem+json"
       },
@@ -95,7 +102,7 @@ describe("ServiceClient", () => {
   it("should automatically parse response as JSON if content type is set correctly", () => {
     const client = new ServiceClient(clientOptions);
     const originalBody = { foo: "bar" };
-    requestStub.returns({
+    requestStub.resolves({
       headers: {
         "content-type": "application/x.problem+json"
       },
@@ -143,6 +150,7 @@ describe("ServiceClient", () => {
     client.request().catch(err => {
       assert(err instanceof ServiceClient.Error);
       assert.equal(err.type, ServiceClient.BODY_PARSE_FAILED);
+      assert(err instanceof BodyParseError);
       assert.deepStrictEqual(err.response, response);
       done();
     });
@@ -158,6 +166,7 @@ describe("ServiceClient", () => {
     client.request().catch(err => {
       assert(err instanceof ServiceClient.Error);
       assert.equal(err.type, ServiceClient.BODY_PARSE_FAILED);
+      assert(err instanceof BodyParseError);
       assert.deepStrictEqual(err.response, response);
       done();
     });
@@ -170,6 +179,7 @@ describe("ServiceClient", () => {
     return client.request().catch(err => {
       assert(err instanceof ServiceClient.Error);
       assert.equal(err.type, ServiceClient.REQUEST_FAILED);
+      assert(err instanceof RequestFailedError);
     });
   });
 
@@ -180,12 +190,13 @@ describe("ServiceClient", () => {
     return client.request().catch(err => {
       assert(err instanceof ServiceClient.Error);
       assert.equal(err.type, ServiceClient.REQUEST_FAILED);
+      assert(err instanceof RequestFailedError);
       assert.deepEqual(err.timings, timings);
       assert.deepEqual(err.timingPhases, timingPhases);
     });
   });
 
-  it("should allow to mark request as failed in the request filter", done => {
+  it("should allow to mark request as failed in the request filter", () => {
     clientOptions.filters = [
       {
         request() {
@@ -194,10 +205,10 @@ describe("ServiceClient", () => {
       }
     ];
     const client = new ServiceClient(clientOptions);
-    client.request().catch(err => {
+    return client.request().catch(err => {
       assert(err instanceof ServiceClient.Error);
       assert.equal(err.type, "Request filter marked request as failed");
-      done();
+      assert(err instanceof RequestFilterError);
     });
   });
 
@@ -213,6 +224,7 @@ describe("ServiceClient", () => {
     client.request().catch(err => {
       assert(err instanceof ServiceClient.Error);
       assert.equal(err.type, "Response filter marked request as failed");
+      assert(err instanceof ResponseFilterError);
       done();
     });
   });
@@ -235,6 +247,7 @@ describe("ServiceClient", () => {
     client.request().catch(err => {
       assert(err instanceof ServiceClient.Error);
       assert.equal(err.type, ServiceClient.RESPONSE_FILTER_FAILED);
+      assert(err instanceof ResponseFilterError);
       assert.deepEqual(err.timings, timings);
       assert.deepEqual(err.timingPhases, timingPhases);
       done();
@@ -263,6 +276,7 @@ describe("ServiceClient", () => {
     client.request().catch(err => {
       assert(err instanceof ServiceClient.Error);
       assert.equal(err.type, ServiceClient.RESPONSE_FILTER_FAILED);
+      assert(err instanceof ResponseFilterError);
       assert(err.message.includes("non-REST-error"));
       done();
     });
@@ -364,6 +378,7 @@ describe("ServiceClient", () => {
         return client.request().catch(err => {
           assert(err instanceof ServiceClient.Error);
           assert(err.type, ServiceClient.CIRCUIT_OPEN);
+          assert(err instanceof CircuitOpenError);
         });
       });
   });
@@ -518,6 +533,7 @@ describe("ServiceClient", () => {
       );
       assert.equal(err instanceof ServiceClient.Error, true);
       assert.equal(err.type, "Response filter marked request as failed");
+      assert(err instanceof ResponseFilterError);
     });
   });
 
@@ -573,6 +589,7 @@ describe("ServiceClient", () => {
         );
         assert.equal(err instanceof ServiceClient.Error, true);
         assert.equal(err.type, ServiceClient.CIRCUIT_OPEN);
+        assert(err instanceof CircuitOpenError);
       });
   });
 
@@ -600,6 +617,7 @@ describe("ServiceClient", () => {
       assert.equal(retrySpy.callCount, 0);
       assert.equal(err instanceof ServiceClient.Error, true);
       assert.equal(err.type, "Response filter marked request as failed");
+      assert(err instanceof ResponseFilterError);
     });
   });
 

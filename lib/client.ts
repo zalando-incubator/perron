@@ -156,10 +156,10 @@ class ServiceClientStrictOptions {
 /**
  * A custom error returned in case something goes wrong.
  */
-export class ServiceClientError extends Error {
+export abstract class ServiceClientError extends Error {
   public timings?: Timings;
   public timingPhases?: TimingPhases;
-  constructor(
+  protected constructor(
     originalError: Error,
     public type: string,
     public response?: ServiceClientResponse,
@@ -172,6 +172,44 @@ export class ServiceClientError extends Error {
       this.timings = originalError.timings;
       this.timingPhases = originalError.timingPhases;
     }
+  }
+}
+
+export class CircuitOpenError extends ServiceClientError {
+  constructor(originalError: Error, name: string) {
+    super(originalError, ServiceClient.CIRCUIT_OPEN, undefined, name);
+  }
+}
+
+export class BodyParseError extends ServiceClientError {
+  constructor(
+    originalError: Error,
+    public response: ServiceClientResponse,
+    name: string
+  ) {
+    super(originalError, ServiceClient.BODY_PARSE_FAILED, response, name);
+  }
+}
+
+export class RequestFilterError extends ServiceClientError {
+  constructor(originalError: Error, name: string) {
+    super(originalError, ServiceClient.REQUEST_FILTER_FAILED, undefined, name);
+  }
+}
+
+export class ResponseFilterError extends ServiceClientError {
+  constructor(
+    originalError: Error,
+    public response: ServiceClientResponse,
+    name: string
+  ) {
+    super(originalError, ServiceClient.RESPONSE_FILTER_FAILED, response, name);
+  }
+}
+
+export class RequestFailedError extends ServiceClientError {
+  constructor(originalError: Error, name: string) {
+    super(originalError, ServiceClient.REQUEST_FAILED, undefined, name);
   }
 }
 
@@ -194,35 +232,10 @@ const decodeResponse = (
     try {
       response.body = JSON.parse(response.body);
     } catch (error) {
-      throw new ServiceClientError(
-        error,
-        ServiceClient.BODY_PARSE_FAILED,
-        response,
-        client.name
-      );
+      throw new BodyParseError(error, response, client.name);
     }
   }
   return response;
-};
-
-/**
- * Wrapper that makes sure that all error coming out
- * of ServiceClients are actual ServiceClientError
- */
-const wrapFailedError = (
-  client: ServiceClient,
-  type: string,
-  error: Error | ServiceClientError,
-  responseThunk?: () => any
-) => {
-  const serviceClientError =
-    error instanceof ServiceClientError
-      ? error
-      : new ServiceClientError(error, type, undefined, client.name);
-  if (!serviceClientError.response && responseThunk) {
-    serviceClientError.response = responseThunk();
-  }
-  return Promise.reject(serviceClientError);
 };
 
 /**
@@ -266,47 +279,26 @@ const requestWithFilters = (
     Promise.resolve(requestOptions)
   );
 
-  let response: ServiceClientResponse | null = null;
-  const responseThunk = () => response;
-
   return requestFilterPromise
-    .catch((err: Error) =>
-      wrapFailedError(client, ServiceClient.REQUEST_FILTER_FAILED, err)
-    )
+    .catch((error: Error) => {
+      throw new RequestFilterError(error, client.name);
+    })
     .then(paramsOrResponse =>
       paramsOrResponse instanceof ServiceClientResponse
         ? paramsOrResponse
-        : request(paramsOrResponse)
+        : request(paramsOrResponse).catch(error => {
+            throw new RequestFailedError(error, client.name);
+          })
     )
-    .then(
-      rawResponse => {
-        response = rawResponse;
-        if (autoParseJson) {
-          return decodeResponse(client, rawResponse);
-        }
-        return rawResponse;
-      },
-      err =>
-        wrapFailedError(
-          client,
-          ServiceClient.REQUEST_FAILED,
-          err,
-          responseThunk
-        )
+    .then(rawResponse =>
+      autoParseJson ? decodeResponse(client, rawResponse) : rawResponse
     )
     .then(resp =>
-      pendingResponseFilters.reduce(
-        unwindResponseFilters,
-        Promise.resolve(resp)
-      )
-    )
-    .catch(err =>
-      wrapFailedError(
-        client,
-        ServiceClient.RESPONSE_FILTER_FAILED,
-        err,
-        responseThunk
-      )
+      pendingResponseFilters
+        .reduce(unwindResponseFilters, Promise.resolve(resp))
+        .catch(error => {
+          throw new ResponseFilterError(error, resp, client.name);
+        })
     );
 };
 
@@ -361,12 +353,36 @@ export class ServiceClient {
     statusCode => statusCode >= 400 && statusCode < 500
   );
 
+  /**
+   * Use `instanceof BodyParseError` check instead
+   * @deprecated
+   */
   public static BODY_PARSE_FAILED = "Parsing of the response body failed";
+
+  /**
+   * Use `instanceof RequestFailedError` check instead
+   * @deprecated
+   */
   public static REQUEST_FAILED = "HTTP Request failed";
+
+  /**
+   * Use `instanceof RequestFilterError` check instead
+   * @deprecated
+   */
   public static REQUEST_FILTER_FAILED =
     "Request filter marked request as failed";
+
+  /**
+   * Use `instanceof ResponseFilterError` check instead
+   * @deprecated
+   */
   public static RESPONSE_FILTER_FAILED =
     "Response filter marked request as failed";
+
+  /**
+   * Use `instanceof CircuitOpenError` check instead
+   * @deprecated
+   */
   public static CIRCUIT_OPEN =
     "Circuit breaker is open and prevented the request";
 
@@ -532,14 +548,7 @@ export class ServiceClient {
               });
           },
           () => {
-            reject(
-              new ServiceClientError(
-                new Error(),
-                ServiceClient.CIRCUIT_OPEN,
-                undefined,
-                this.name
-              )
-            );
+            reject(new CircuitOpenError(new Error(), this.name));
           }
         );
       })
