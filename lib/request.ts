@@ -40,7 +40,6 @@ export class ServiceClientResponse {
     public statusCode: number,
     public headers: IncomingHttpHeaders,
     public body: any,
-    // tslint:disable-next-line
     public request: ServiceClientRequestOptions
   ) {}
 }
