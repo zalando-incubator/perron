@@ -23,11 +23,17 @@ describe("ServiceClient", () => {
     CircuitOpenError,
     RequestFilterError,
     ResponseFilterError,
-    RequestFailedError
+    RequestFailedError,
+    RequestConnectionTimeoutError,
+    RequestUserTimeoutError
   } = proxyquire("../dist/client", {
     "./request": fakeRequest
   });
-  const { RequestError } = fakeRequest;
+  const {
+    RequestError,
+    ConnectionTimeoutError,
+    UserTimeoutError
+  } = fakeRequest;
   const timings = {
     socket: 1,
     lookup: 2,
@@ -180,6 +186,24 @@ describe("ServiceClient", () => {
       assert(err instanceof ServiceClient.Error);
       assert.equal(err.type, ServiceClient.REQUEST_FAILED);
       assert(err instanceof RequestFailedError);
+    });
+  });
+
+  it("should give a custom error when request timeouts", () => {
+    const client = new ServiceClient(clientOptions);
+    requestStub.rejects(new ConnectionTimeoutError("foobar"));
+    return client.request().catch(err => {
+      assert(err instanceof ServiceClient.Error);
+      assert(err instanceof RequestConnectionTimeoutError);
+    });
+  });
+
+  it("should give a custom error when request is dropped", () => {
+    const client = new ServiceClient(clientOptions);
+    requestStub.rejects(new UserTimeoutError("foobar"));
+    return client.request().catch(err => {
+      assert(err instanceof ServiceClient.Error);
+      assert(err instanceof RequestUserTimeoutError);
     });
   });
 

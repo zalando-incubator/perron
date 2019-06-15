@@ -2,12 +2,14 @@ import * as CircuitBreaker from "circuit-breaker-js";
 import * as retry from "retry";
 import * as url from "url";
 import {
+  ConnectionTimeoutError,
   request,
   RequestError,
   ServiceClientRequestOptions,
   ServiceClientResponse,
   TimingPhases,
-  Timings
+  Timings,
+  UserTimeoutError
 } from "./request";
 
 export { ServiceClientResponse, ServiceClientRequestOptions };
@@ -220,6 +222,9 @@ export class RequestFailedError extends ServiceClientError {
   }
 }
 
+export class RequestConnectionTimeoutError extends RequestFailedError {}
+export class RequestUserTimeoutError extends RequestFailedError {}
+
 const JSON_CONTENT_TYPE_REGEX = /application\/(.*?[+])?json/i;
 
 /**
@@ -294,7 +299,13 @@ const requestWithFilters = (
       paramsOrResponse instanceof ServiceClientResponse
         ? paramsOrResponse
         : request(paramsOrResponse).catch((error: RequestError) => {
-            throw new RequestFailedError(error, client.name);
+            if (error instanceof ConnectionTimeoutError) {
+              throw new RequestConnectionTimeoutError(error, client.name);
+            } else if (error instanceof UserTimeoutError) {
+              throw new RequestUserTimeoutError(error, client.name);
+            } else {
+              throw new RequestFailedError(error, client.name);
+            }
           })
     )
     .then(rawResponse =>
