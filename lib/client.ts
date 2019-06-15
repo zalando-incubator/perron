@@ -529,6 +529,7 @@ export class ServiceClient {
     };
 
     const operation = retry.operation(opts);
+    const retryErrors: ServiceClientError[] = [];
 
     const breaker = this.getCircuitBreaker(params);
 
@@ -544,9 +545,11 @@ export class ServiceClient {
             )
               .then((result: ServiceClientResponse) => {
                 success();
+                result.retryErrors = retryErrors;
                 resolve(result);
               })
-              .catch((error: Error) => {
+              .catch((error: ServiceClientError) => {
+                retryErrors.push(error);
                 failure();
                 if (!shouldRetry(error, params)) {
                   reject(error);
