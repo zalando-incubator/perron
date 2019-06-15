@@ -64,20 +64,19 @@ Each call to `request` method will return a Promise, that would either resolve t
 
 ## Handling Errors
 
-For the error case you will get a custom error type `ServiceClient.Error`. A custom type is useful in case you change the request to some other processing in your app and then need to distinguish between your app error and requests errors in a final catch.
+For the error case you will get a custom error type `ServiceClientError`. A custom type is useful in case you change the request to some other processing in your app and then need to distinguish between your app error and requests errors in a final catch.
 
-An instance of `ServiceClient.Error` also carries additional information on type of the error:
+`ServiceClientError` class contains an optional `response` field that is available if any response was received before there was an error.
+
+If you have not specified retry options, you can use `instanceof` checks on the error to determine exact reason:
 
 ```js
 catWatch.request({
   path: '/projects?limit=10'
-}).then(console.log, dealWithError);
+}).then(console.log, logError);
 
-function dealWithError(err) {
-  if (err instanceof RequestFailedError) {
-    console.log('HTTP Request failed');
-    console.log('Request options were', err.requestOptions);
-  } else if (err instanceof BodyParseError) {
+function logError(err) {
+  if (err instanceof BodyParseError) {
     console.log('Got a JSON response but parsing it failed');
     console.log('Raw response was', err.response);
   } else if (err instanceof RequestFilterError) {
@@ -87,11 +86,45 @@ function dealWithError(err) {
     console.log('Raw response was', err.response);
   } else if (err instanceof CircuitOpenError) {
     console.log('Circuit breaker is open');
+  } else if (err instanceof RequestConnectionTimeoutError) {
+    console.log('Connection timeout');
+    console.log('Request options were', err.requestOptions);
+  } else if (err instanceof RequestUserTimeoutError) {
+    console.log('Request dropped after timeout specified in `dropRequestAfter` option');
+    console.log('Request options were', err.requestOptions);
+  } else if (err instanceof RequestFailedError) {
+    console.log('Unknown error while making the request');
+    console.log('Request options were', err.requestOptions);
   }
 }
 ```
 
-Final useful feature of the `ServiceClient.Error` class is an optional `response` field that is available if any response was received before there was an error.
+If you have retries configured, there are only 3 types of errors you will get that are relating to circuit breakers and retries, however you can access original errors that led to retries through `retryErrors` field available on both the successful response:
+
+```js
+
+catWatch.request({
+  path: '/projects?limit=10'
+}).then(function (result) {
+  console.log("Response was", result.body);
+  if (result.retryErrors.length) {
+    console.log("Request successful, but there were retries:");
+    result.retryErrors.forEach(logError);
+  }
+}, logError);
+
+function logRetryError(err) {
+  if (err instanceof CircuitOpenError) {
+    console.log('Circuit breaker is open');
+  } else if (err instanceof ShouldRetryRejectedError) {
+    console.log('Provided `shouldRetry` function rejected retry attempt');
+    err.retryErrors.forEach(logError);
+  } else if (err instanceof MaximumRetriesReachedError) {
+    console.log('Reached maximum retry count');
+    err.retryErrors.forEach(logError);
+  }
+}
+```
 
 ## Circuit Breaker
 
@@ -142,19 +175,18 @@ const catWatch = new ServiceClient({
 
 For application critical requests it can be a good idea to retry failed requests to the responsible services.
 
-Occasionaly target server can have high latency for a short period of time, or in the case of a stack of servers, one server can be having issues
+Occasionally target server can have high latency for a short period of time, or in the case of a stack of servers, one server can be having issues
 and retrying the request will allow perron to attempt to access one of the other servers that currently aren't facing issues.
 
-By default `perron` has retry logic implemented, but configured to perform 0 retries. Internally `perron` uses [node-retry](https://github.com/tim-kos/node-retry) to handle the retry logic
-and configuration. All of the existing options provided by `node-retry` can be passed via configuration options through `perron`.
+By default `perron` has retry logic implemented, but configured to perform 0 retries. Internally `perron` uses [node-retry](https://github.com/tim-kos/node-retry) to handle the retry logic and configuration. All of the existing options provided by `node-retry` can be passed via configuration options through `perron`.
 
-There is a shouldRetry function which can be defined in any way by the consumer and is used in the try logic to determine whether to attempt the retries or not depending on the type of error and the original request object.
+There is a `shouldRetry` function which can be defined in any way by the consumer and is used in the try logic to determine whether to attempt the retries or not depending on the type of error and the original request object.
 If the function returns true and the number of retries hasn't been exceeded, the request can be retried.
 
-There is also an onRetry function which can be defined by the user of `perron`. This function is called every time a retry request will be triggered.
-It is provided the currentAttempt, the error that is causing the retry and the original request params.
+There is also an `onRetry` function which can be defined by the user of `perron`. This function is called every time a retry request will be triggered.
+It is provided the current attempt index, the error that is causing the retry and the original request params.
 
-The first time onRetry gets called, the value of currentAttempt will be 2. This is because the first initial request is counted as the first attempt, and the first retry attempted will then be the second request.
+The first time `onRetry` gets called, the value of currentAttempt will be 2. This is because the first initial request is counted as the first attempt, and the first retry attempted will then be the second request.
 
 ```js
 const {ServiceClient} = require('perron');
