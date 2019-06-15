@@ -25,7 +25,9 @@ describe("ServiceClient", () => {
     ResponseFilterError,
     RequestFailedError,
     RequestConnectionTimeoutError,
-    RequestUserTimeoutError
+    RequestUserTimeoutError,
+    MaximumRetriesReachedError,
+    ShouldRetryRejectedError
   } = proxyquire("../dist/client", {
     "./request": fakeRequest
   });
@@ -595,7 +597,11 @@ describe("ServiceClient", () => {
       );
       assert.equal(err instanceof ServiceClient.Error, true);
       assert.equal(err.type, "Response filter marked request as failed");
-      assert(err instanceof ResponseFilterError);
+      assert(err instanceof MaximumRetriesReachedError);
+      assert.equal(err.retryErrors.length, 4);
+      for (const originalError of err.retryErrors) {
+        assert(originalError instanceof ResponseFilterError);
+      }
     });
   });
 
@@ -681,7 +687,7 @@ describe("ServiceClient", () => {
       assert.equal(retrySpy.callCount, 0);
       assert.equal(err instanceof ServiceClient.Error, true);
       assert.equal(err.type, "Response filter marked request as failed");
-      assert(err instanceof ResponseFilterError);
+      assert(err instanceof ShouldRetryRejectedError);
     });
   });
 

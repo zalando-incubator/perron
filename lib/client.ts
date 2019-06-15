@@ -161,6 +161,7 @@ class ServiceClientStrictOptions {
 export abstract class ServiceClientError extends Error {
   public timings?: Timings;
   public timingPhases?: TimingPhases;
+  public retryErrors: ServiceClientError[];
   protected constructor(
     originalError: Error,
     public type: string,
@@ -168,6 +169,7 @@ export abstract class ServiceClientError extends Error {
     name: string = "ServiceClient"
   ) {
     super(`${name}: ${type}. ${originalError.message || ""}`);
+    this.retryErrors = [];
     // Does not copy `message` from the original error
     Object.assign(this, originalError);
     const timingSource: {
@@ -224,6 +226,18 @@ export class RequestFailedError extends ServiceClientError {
 
 export class RequestConnectionTimeoutError extends RequestFailedError {}
 export class RequestUserTimeoutError extends RequestFailedError {}
+
+export class ShouldRetryRejectedError extends ServiceClientError {
+  constructor(originalError: Error, type: string, name: string) {
+    super(originalError, type, undefined, name);
+  }
+}
+
+export class MaximumRetriesReachedError extends ServiceClientError {
+  constructor(originalError: Error, type: string, name: string) {
+    super(originalError, type, undefined, name);
+  }
+}
 
 const JSON_CONTENT_TYPE_REGEX = /application\/(.*?[+])?json/i;
 
@@ -552,11 +566,26 @@ export class ServiceClient {
                 retryErrors.push(error);
                 failure();
                 if (!shouldRetry(error, params)) {
-                  reject(error);
+                  reject(
+                    new ShouldRetryRejectedError(error, error.type, this.name)
+                  );
                   return;
                 }
                 if (!operation.retry(error)) {
-                  reject(error);
+                  // Wrapping error when user does not want retries would result
+                  // in bad developer experience where you always have to unwrap it
+                  // knowing there is only one error inside, so we do not do that.
+                  if (retries === 0) {
+                    reject(error);
+                  } else {
+                    reject(
+                      new MaximumRetriesReachedError(
+                        error,
+                        error.type,
+                        this.name
+                      )
+                    );
+                  }
                   return;
                 }
                 onRetry(currentAttempt + 1, error, params);
@@ -567,7 +596,10 @@ export class ServiceClient {
           }
         );
       })
-    );
+    ).catch((error: ServiceClientError) => {
+      error.retryErrors = retryErrors;
+      throw error;
+    });
   }
 }
 Object.freeze(ServiceClient);
