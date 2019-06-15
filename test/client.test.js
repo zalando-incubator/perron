@@ -565,6 +565,8 @@ describe("ServiceClient", () => {
     return client.request().then(response => {
       assert.equal(retrySpy.callCount, 1);
       assert.deepEqual(response.body, { foo: "bar" });
+      assert.equal(response.retryErrors.length, 1);
+      assert(response.retryErrors[0] instanceof ResponseFilterError);
     });
   });
 

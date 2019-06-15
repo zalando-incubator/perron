@@ -6,6 +6,7 @@ import {
 import { request as httpsRequest, RequestOptions } from "https";
 import * as querystring from "querystring";
 import * as zlib from "zlib";
+import { ServiceClientError } from "./client";
 
 const getInterval = (time: [number, number]): number => {
   const diff = process.hrtime(time);
@@ -36,12 +37,15 @@ export interface ServiceClientRequestOptions extends RequestOptions {
 export class ServiceClientResponse {
   public timings?: Timings;
   public timingPhases?: TimingPhases;
+  public retryErrors: ServiceClientError[];
   constructor(
     public statusCode: number,
     public headers: IncomingHttpHeaders,
     public body: any,
     public request: ServiceClientRequestOptions
-  ) {}
+  ) {
+    this.retryErrors = [];
+  }
 }
 
 export interface Timings {
