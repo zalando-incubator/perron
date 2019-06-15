@@ -162,13 +162,19 @@ export abstract class ServiceClientError extends Error {
   public timings?: Timings;
   public timingPhases?: TimingPhases;
   public retryErrors: ServiceClientError[];
+  /**
+   * Use `instanceof` checks instead.
+   * @deprecated since 0.9.0
+   */
+  public type: string;
   protected constructor(
     originalError: Error,
-    public type: string,
+    type: string,
     public response?: ServiceClientResponse,
     name: string = "ServiceClient"
   ) {
     super(`${name}: ${type}. ${originalError.message || ""}`);
+    this.type = type;
     this.retryErrors = [];
     // Does not copy `message` from the original error
     Object.assign(this, originalError);
@@ -381,33 +387,33 @@ export class ServiceClient {
 
   /**
    * Use `instanceof BodyParseError` check instead
-   * @deprecated
+   * @deprecated since 0.9.0
    */
   public static BODY_PARSE_FAILED = "Parsing of the response body failed";
 
   /**
    * Use `instanceof RequestFailedError` check instead
-   * @deprecated
+   * @deprecated since 0.9.0
    */
   public static REQUEST_FAILED = "HTTP Request failed";
 
   /**
    * Use `instanceof RequestFilterError` check instead
-   * @deprecated
+   * @deprecated since 0.9.0
    */
   public static REQUEST_FILTER_FAILED =
     "Request filter marked request as failed";
 
   /**
    * Use `instanceof ResponseFilterError` check instead
-   * @deprecated
+   * @deprecated since 0.9.0
    */
   public static RESPONSE_FILTER_FAILED =
     "Response filter marked request as failed";
 
   /**
    * Use `instanceof CircuitOpenError` check instead
-   * @deprecated
+   * @deprecated since 0.9.0
    */
   public static CIRCUIT_OPEN =
     "Circuit breaker is open and prevented the request";
