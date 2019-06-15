@@ -545,6 +545,29 @@ describe("ServiceClient", () => {
     });
   });
 
+  it("should correctly return response if one of the retries succeeds", () => {
+    const retrySpy = sinon.spy();
+    clientOptions.retryOptions = {
+      retries: 3,
+      onRetry: retrySpy
+    };
+    const client = new ServiceClient(clientOptions);
+    requestStub.onFirstCall().resolves({
+      statusCode: 501,
+      headers: {},
+      body: "{}"
+    });
+    requestStub.onSecondCall().resolves({
+      statusCode: 200,
+      headers: {},
+      body: `{"foo":"bar"}`
+    });
+    return client.request().then(response => {
+      assert.equal(retrySpy.callCount, 1);
+      assert.deepEqual(response.body, { foo: "bar" });
+    });
+  });
+
   it("should perform the desired number of retries based on the configuration", () => {
     const retrySpy = sinon.spy();
     clientOptions.retryOptions = {
