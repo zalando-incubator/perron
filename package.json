@@ -9,9 +9,9 @@
   "scripts": {
     "prepublishOnly": "npm run test && npm run docs",
     "lint": "eslint . --ext .ts,.tsx,.js",
-    "test": "npm run lint && tsc && mocha test",
-    "test-cov": "npm run lint && tsc && nyc --check-coverage --lines 90 --functions 85 --branches 85 mocha test",
-    "tdd": "mocha test --watch"
+    "test": "npm run lint && tsc && mocha --exit test",
+    "test-cov": "npm run lint && tsc && nyc --check-coverage --lines 90 --functions 85 --branches 85 mocha --exit test",
+    "tdd": "mocha test --exit --watch"
   },
   "repository": {
     "type": "git",

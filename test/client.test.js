@@ -5,7 +5,13 @@ const proxyquire = require("proxyquire").noCallThru();
 const sinon = require("sinon");
 const realRequest = require("../dist/request");
 
+const fail = result =>
+  assert.fail(`expected promise to be rejected, got resolved with ${result}`);
+
 describe("ServiceClient", () => {
+  /**
+   * @type ServiceClientOptions
+   */
   let clientOptions;
 
   const requestStub = sinon.stub();
@@ -148,35 +154,33 @@ describe("ServiceClient", () => {
     });
   });
 
-  it("should throw an error if body is not set for application/json content type", done => {
+  it("should throw an error if body is not set for application/json content type", () => {
     const client = new ServiceClient(clientOptions);
     const response = {
       headers: { "content-type": "application/json" },
       body: ""
     };
     requestStub.returns(Promise.resolve(response));
-    client.request().catch(err => {
+    return client.request().then(fail, err => {
       assert(err instanceof ServiceClient.Error);
       assert.equal(err.type, ServiceClient.BODY_PARSE_FAILED);
       assert(err instanceof BodyParseError);
       assert.deepStrictEqual(err.response, response);
-      done();
     });
   });
 
-  it("should give a custom error object when the parsing of the body fails", done => {
+  it("should give a custom error object when the parsing of the body fails", () => {
     const client = new ServiceClient(clientOptions);
     const response = {
       headers: {},
       body: "/not a JSON"
     };
     requestStub.returns(Promise.resolve(response));
-    client.request().catch(err => {
+    return client.request().then(fail, err => {
       assert(err instanceof ServiceClient.Error);
       assert.equal(err.type, ServiceClient.BODY_PARSE_FAILED);
       assert(err instanceof BodyParseError);
       assert.deepStrictEqual(err.response, response);
-      done();
     });
   });
 
@@ -184,7 +188,7 @@ describe("ServiceClient", () => {
     const client = new ServiceClient(clientOptions);
     const requestError = new RequestError("foobar");
     requestStub.returns(Promise.reject(requestError));
-    return client.request().catch(err => {
+    return client.request().then(fail, err => {
       assert(err instanceof ServiceClient.Error);
       assert.equal(err.type, ServiceClient.REQUEST_FAILED);
       assert(err instanceof RequestFailedError);
@@ -194,7 +198,7 @@ describe("ServiceClient", () => {
   it("should give a custom error when request timeouts", () => {
     const client = new ServiceClient(clientOptions);
     requestStub.rejects(new ConnectionTimeoutError("foobar"));
-    return client.request().catch(err => {
+    return client.request().then(fail, err => {
       assert(err instanceof ServiceClient.Error);
       assert(err instanceof RequestConnectionTimeoutError);
     });
@@ -203,7 +207,7 @@ describe("ServiceClient", () => {
   it("should give a custom error when request is dropped", () => {
     const client = new ServiceClient(clientOptions);
     requestStub.rejects(new UserTimeoutError("foobar"));
-    return client.request().catch(err => {
+    return client.request().then(fail, err => {
       assert(err instanceof ServiceClient.Error);
       assert(err instanceof RequestUserTimeoutError);
     });
@@ -213,7 +217,7 @@ describe("ServiceClient", () => {
     const client = new ServiceClient(clientOptions);
     const requestError = new RequestError("foobar", {}, timings);
     requestStub.returns(Promise.reject(requestError));
-    return client.request().catch(err => {
+    return client.request().then(fail, err => {
       assert(err instanceof ServiceClient.Error);
       assert.equal(err.type, ServiceClient.REQUEST_FAILED);
       assert(err instanceof RequestFailedError);
@@ -227,7 +231,7 @@ describe("ServiceClient", () => {
     const requestOptions = { hostname: "foo" };
     const requestError = new RequestError("foobar", requestOptions, timings);
     requestStub.returns(Promise.reject(requestError));
-    return client.request().catch(err => {
+    return client.request().then(fail, err => {
       assert(err instanceof RequestFailedError);
       assert.deepStrictEqual(err.requestOptions, requestOptions);
     });
@@ -242,14 +246,14 @@ describe("ServiceClient", () => {
       }
     ];
     const client = new ServiceClient(clientOptions);
-    return client.request().catch(err => {
+    return client.request().then(fail, err => {
       assert(err instanceof ServiceClient.Error);
       assert.equal(err.type, "Request filter marked request as failed");
       assert(err instanceof RequestFilterError);
     });
   });
 
-  it("should by default handle 5xx code in a response-filter", done => {
+  it("should by default handle 5xx code in a response-filter", () => {
     const client = new ServiceClient(clientOptions);
     requestStub.returns(
       Promise.resolve({
@@ -258,15 +262,14 @@ describe("ServiceClient", () => {
         body: "{}"
       })
     );
-    client.request().catch(err => {
+    return client.request().then(fail, err => {
       assert(err instanceof ServiceClient.Error);
       assert.equal(err.type, "Response filter marked request as failed");
       assert(err instanceof ResponseFilterError);
-      done();
     });
   });
 
-  it("should be able to handle 4xx code as a response-filter", done => {
+  it("should be able to handle 4xx code as a response-filter", () => {
     clientOptions.filters = [
       ServiceClient.treat4xxAsError,
       ServiceClient.treat5xxAsError
@@ -281,17 +284,16 @@ describe("ServiceClient", () => {
         timingPhases
       })
     );
-    client.request().catch(err => {
+    return client.request().then(fail, err => {
       assert(err instanceof ServiceClient.Error);
       assert.equal(err.type, ServiceClient.RESPONSE_FILTER_FAILED);
       assert(err instanceof ResponseFilterError);
       assert.deepEqual(err.timings, timings);
       assert.deepEqual(err.timingPhases, timingPhases);
-      done();
     });
   });
 
-  it("should be possible to define your own response-filters", done => {
+  it("should be possible to define your own response-filters", () => {
     clientOptions.filters = [
       {
         response(response) {
@@ -310,16 +312,15 @@ describe("ServiceClient", () => {
         body: '{ "error": "non-REST-error" }'
       })
     );
-    client.request().catch(err => {
+    return client.request().then(fail, err => {
       assert(err instanceof ServiceClient.Error);
       assert.equal(err.type, ServiceClient.RESPONSE_FILTER_FAILED);
       assert(err instanceof ResponseFilterError);
       assert(err.message.includes("non-REST-error"));
-      done();
     });
   });
 
-  it("should have the original response in a response filter error", done => {
+  it("should have the original response in a response filter error", () => {
     clientOptions.filters = [
       {
         response() {
@@ -334,13 +335,12 @@ describe("ServiceClient", () => {
       body: '{ "error": "non-REST-error" }'
     };
     requestStub.returns(Promise.resolve(response));
-    client.request().catch(err => {
+    return client.request().then(fail, err => {
       assert.deepStrictEqual(err.response, response);
-      done();
     });
   });
 
-  it("should allow to specify request-filters to augment the request", done => {
+  it("should allow to specify request-filters to augment the request", () => {
     clientOptions.filters = [
       {
         request(request) {
@@ -350,13 +350,12 @@ describe("ServiceClient", () => {
       }
     ];
     const client = new ServiceClient(clientOptions);
-    client.request().then(() => {
+    return client.request().then(() => {
       assert.equal(requestStub.firstCall.args[0].path, "foo-bar-buzz");
-      done();
     });
   });
 
-  it("should allow to specify a request-filters to short-circuit a response", done => {
+  it("should allow to specify a request-filters to short-circuit a response", () => {
     const headers = {
       "x-my-custom-header": "foobar"
     };
@@ -371,10 +370,9 @@ describe("ServiceClient", () => {
       }
     ];
     const client = new ServiceClient(clientOptions);
-    client.request().then(response => {
+    return client.request().then(response => {
       assert.deepStrictEqual(response.headers, headers);
       assert.deepStrictEqual(response.body, body);
-      done();
     });
   });
 
@@ -387,9 +385,8 @@ describe("ServiceClient", () => {
     const errorResponse = Promise.resolve(
       Promise.reject(new RequestError("timeout"))
     );
-    const requests = Array.from({ length: 11 });
 
-    [
+    const responses = [
       emptySuccessResponse,
       emptySuccessResponse,
       httpErrorResponse,
@@ -401,12 +398,15 @@ describe("ServiceClient", () => {
       httpErrorResponse,
       errorResponse,
       emptySuccessResponse
-    ].forEach((response, index) => {
+    ];
+
+    responses.forEach((response, index) => {
       requestStub.onCall(index).returns(response);
     });
 
+    clientOptions.circuitBreaker = {};
     const client = new ServiceClient(clientOptions);
-    return requests
+    return responses
       .reduce(promise => {
         const tick = () => {
           return client.request();
@@ -414,11 +414,12 @@ describe("ServiceClient", () => {
         return promise.then(tick, tick);
       }, Promise.resolve())
       .then(() => {
-        return client.request().catch(err => {
-          assert(err instanceof ServiceClient.Error);
-          assert(err.type, ServiceClient.CIRCUIT_OPEN);
-          assert(err instanceof CircuitOpenError);
-        });
+        return client.request();
+      })
+      .then(fail, err => {
+        assert(err instanceof ServiceClient.Error);
+        assert(err.type, ServiceClient.CIRCUIT_OPEN);
+        assert(err instanceof CircuitOpenError);
       });
   });
 
@@ -586,7 +587,7 @@ describe("ServiceClient", () => {
         body: "{}"
       })
     );
-    return client.request().catch(err => {
+    return client.request().then(fail, err => {
       assert.equal(retrySpy.callCount, 3);
       assert(
         retrySpy.alwaysCalledWithMatch(
@@ -612,6 +613,7 @@ describe("ServiceClient", () => {
       body: "{}"
     });
     const retrySpy = sinon.spy();
+    clientOptions.circuitBreaker = {};
     clientOptions.retryOptions = {
       retries: 1,
       onRetry: retrySpy
@@ -619,9 +621,8 @@ describe("ServiceClient", () => {
     const errorResponse = Promise.resolve(
       Promise.reject(new RequestError("timeout"))
     );
-    const requests = Array.from({ length: 11 });
 
-    [
+    const responses = [
       emptySuccessResponse,
       emptySuccessResponse,
       errorResponse,
@@ -633,12 +634,14 @@ describe("ServiceClient", () => {
       errorResponse,
       httpErrorResponse,
       emptySuccessResponse
-    ].forEach((response, index) => {
+    ];
+
+    responses.forEach((response, index) => {
       requestStub.onCall(index).returns(response);
     });
 
     const client = new ServiceClient(clientOptions);
-    return requests
+    return responses
       .reduce(promise => {
         const tick = () => {
           return client.request();
@@ -648,7 +651,7 @@ describe("ServiceClient", () => {
       .then(() => {
         return client.request();
       })
-      .catch(err => {
+      .then(fail, err => {
         assert.equal(retrySpy.callCount, 4);
         assert(
           retrySpy.alwaysCalledWithMatch(
@@ -668,10 +671,7 @@ describe("ServiceClient", () => {
     clientOptions.retryOptions = {
       retries: 1,
       shouldRetry(err) {
-        if (err.response.statusCode === 501) {
-          return false;
-        }
-        return true;
+        return err.response.statusCode !== 501;
       },
       onRetry: retrySpy
     };
@@ -683,7 +683,7 @@ describe("ServiceClient", () => {
         body: "{}"
       })
     );
-    return client.request().catch(err => {
+    return client.request().then(fail, err => {
       assert.equal(retrySpy.callCount, 0);
       assert.equal(err instanceof ServiceClient.Error, true);
       assert.equal(err.type, "Response filter marked request as failed");
@@ -696,7 +696,7 @@ describe("ServiceClient", () => {
     const client = new ServiceClient(clientOptions);
     const requestError = new RequestError("foobar");
     requestStub.returns(Promise.reject(requestError));
-    return client.request().catch(err => {
+    return client.request().then(fail, err => {
       assert.equal(err.message, "TestClient: HTTP Request failed. foobar");
     });
   });
@@ -705,7 +705,7 @@ describe("ServiceClient", () => {
     const client = new ServiceClient(clientOptions);
     const requestError = new RequestError("foobar");
     requestStub.returns(Promise.reject(requestError));
-    return client.request().catch(err => {
+    return client.request().then(fail, err => {
       assert.equal(
         err.message,
         "catwatch.opensource.zalan.do: HTTP Request failed. foobar"
