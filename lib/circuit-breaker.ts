@@ -140,7 +140,7 @@ export class CircuitBreaker implements CircuitBreakerPublicApi {
       self.buckets.push(createBucket());
     };
 
-    setInterval(tick, bucketDuration);
+    setInterval(tick, bucketDuration).unref();
   }
 
   private lastBucket() {
