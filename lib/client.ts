@@ -1,4 +1,8 @@
-import * as CircuitBreaker from "circuit-breaker-js";
+import {
+  CircuitBreaker,
+  CircuitBreakerOptions,
+  CircuitBreakerPublicApi
+} from "./circuit-breaker";
 import * as retry from "retry";
 import * as url from "url";
 import {
@@ -82,10 +86,7 @@ export class ServiceClientOptions {
       req?: ServiceClientRequestOptions
     ) => void;
   };
-  public circuitBreaker?:
-    | false
-    | CircuitBreaker.Options
-    | CircuitBreakerFactory;
+  public circuitBreaker?: false | CircuitBreakerOptions | CircuitBreakerFactory;
   public defaultRequestOptions?: Partial<ServiceClientRequestOptions>;
 }
 
@@ -364,7 +365,7 @@ const requestWithFilters = (
 const noop = () => {
   /* do nothing */
 };
-const noopBreaker: CircuitBreaker = {
+const noopBreaker: CircuitBreakerPublicApi = {
   run(command) {
     command(noop, noop);
   },
@@ -530,7 +531,7 @@ export class ServiceClient {
    */
   public getCircuitBreaker(
     params: ServiceClientRequestOptions
-  ): CircuitBreaker {
+  ): CircuitBreakerPublicApi {
     if (this.breaker) {
       return this.breaker;
     }
