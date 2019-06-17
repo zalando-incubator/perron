@@ -36,6 +36,8 @@ class BufferStream extends stream.Readable {
     this.index += 1;
   }
 }
+const fail = result =>
+  assert.fail(`expected promise to be rejected, got resolved with ${result}`);
 
 describe("request", () => {
   const httpStub = {};
@@ -114,7 +116,7 @@ describe("request", () => {
   it("should reject a promise if request errors out", () => {
     const requestPromise = request();
     requestStub.emit("error", new Error("foo"));
-    return requestPromise.catch(err => assert.equal(err.message, "foo"));
+    return requestPromise.then(fail, err => assert.equal(err.message, "foo"));
   });
 
   it("should use the body of the request if one is provided", () => {
@@ -125,192 +127,157 @@ describe("request", () => {
     assert.equal(requestStub.write.firstCall.args[0], "foobar");
   });
 
-  it("should resolve the promise with full response on success", done => {
-    request().then(response => {
-      assert.equal(response.body, "foobar");
-      done();
-    });
+  it("should resolve the promise with full response on success", () => {
+    const promise = request();
     const responseStub = new ResponseStub();
     httpsStub.request.firstCall.args[1](responseStub);
     responseStub.emit("data", Buffer.from("foo"));
     responseStub.emit("data", Buffer.from("bar"));
     responseStub.emit("end");
+    return promise.then(response => {
+      assert.equal(response.body, "foobar");
+    });
   });
 
-  it("should reject the promise on response error", done => {
-    request().catch(error => {
-      assert.equal(error.message, "test");
-      done();
-    });
+  it("should reject the promise on response error", () => {
+    const promise = request();
     const responseStub = new ResponseStub();
     httpsStub.request.firstCall.args[1](responseStub);
     responseStub.emit("data", Buffer.from("foo"));
     responseStub.emit("error", new Error("test"));
+    return promise.then(fail, error => {
+      assert.equal(error.message, "test");
+    });
   });
 
-  it("should support responses chunked between utf8 boundaries", done => {
-    request().then(response => {
-      assert.equal(response.body, "я");
-      done();
-    });
+  it("should support responses chunked between utf8 boundaries", () => {
+    const promise = request();
     const responseStub = new ResponseStub();
     httpsStub.request.firstCall.args[1](responseStub);
     const data = Buffer.from("я");
     responseStub.emit("data", Buffer.from([data[0]]));
     responseStub.emit("data", Buffer.from([data[1]]));
     responseStub.emit("end");
+    return promise.then(response => {
+      assert.equal(response.body, "я");
+    });
   });
 
   ["gzip", "deflate"].forEach(encoding => {
-    it(`should inflate response body with ${encoding} encoding`, done => {
-      request()
-        .then(response => {
-          assert.equal(response.body, "foobar");
-          assert.equal(response.statusCode, 200);
-          assert.equal(response.headers["content-encoding"], "gzip");
-          done();
-        })
-        .catch(done);
+    it(`should inflate response body with ${encoding} encoding`, () => {
+      const promise = request();
       const responseStub = new BufferStream(zlib.gzipSync("foobar"));
       responseStub.statusCode = 200;
       responseStub.headers = {
         "content-encoding": "gzip"
       };
       httpsStub.request.firstCall.args[1](responseStub);
+      return promise.then(response => {
+        assert.equal(response.body, "foobar");
+        assert.equal(response.statusCode, 200);
+        assert.equal(response.headers["content-encoding"], "gzip");
+      });
     });
   });
 
-  it("should reject the promise on unzip error", done => {
-    request()
-      .catch(error => {
-        assert.equal(error.message, "incorrect header check");
-        done();
-      })
-      .catch(done);
+  it("should reject the promise on unzip error", () => {
+    const promise = request();
     const responseStub = new BufferStream(Buffer.from("not gzipped!"));
     responseStub.headers = {
       "content-encoding": "gzip"
     };
     httpsStub.request.firstCall.args[1](responseStub);
+    return promise.then(fail, error => {
+      assert.equal(error.message, "incorrect header check");
+    });
   });
 
-  it("should reject the promise on socket timeout", done => {
+  it("should reject the promise on socket timeout", () => {
     requestStub.abort = sinon.stub();
-    request()
-      .catch(error => {
-        assert.equal(error.message, "socket timeout");
-        assert(requestStub.abort.calledOnce);
-        done();
-      })
-      .catch(done);
+    const promise = request();
     requestStub.emit("timeout");
+    return promise.then(fail, error => {
+      assert.equal(error.message, "socket timeout");
+      assert(requestStub.abort.calledOnce);
+    });
   });
 
-  it("should resolve the promise when response finishes in time", done => {
+  it("should resolve the promise when response finishes in time", () => {
     requestStub.abort = sinon.stub();
     const responseStub = new ResponseStub();
-    request({ dropRequestAfter: 500 })
-      .then(response => {
-        assert.equal(response.body, "hello");
-        assert(!requestStub.abort.called);
-        done();
-      })
-      .catch(done);
+    const promise = request({ dropRequestAfter: 500 });
     clock.tick(100);
     httpsStub.request.firstCall.args[1](responseStub);
     clock.tick(100);
     responseStub.emit("data", Buffer.from("hello"));
     clock.tick(100);
     responseStub.emit("end");
+    return promise.then(response => {
+      assert.equal(response.body, "hello");
+      assert(!requestStub.abort.called);
+    });
   });
 
-  it("should resolve the promise when response finishes in time without data", done => {
+  it("should resolve the promise when response finishes in time without data", () => {
     requestStub.abort = sinon.stub();
     const responseStub = new ResponseStub();
-    request({ dropRequestAfter: 500 })
-      .then(response => {
-        assert.equal(response.body, "");
-        assert(!requestStub.abort.called);
-        done();
-      })
-      .catch(done);
+    const promise = request({ dropRequestAfter: 500 });
     clock.tick(100);
     httpsStub.request.firstCall.args[1](responseStub);
     clock.tick(100);
     responseStub.emit("end");
+    return promise.then(response => {
+      assert.equal(response.body, "");
+      assert(!requestStub.abort.called);
+    });
   });
 
-  it("should attach the request options to the response", done => {
+  it("should attach the request options to the response", () => {
     requestStub.abort = sinon.stub();
     const responseStub = new ResponseStub();
     const requestOptions = {
       test: "item"
     };
-    request(requestOptions)
-      .then(response => {
-        assert.equal(response.request.test, requestOptions.test);
-        assert(!requestStub.abort.called);
-        done();
-      })
-      .catch(done);
+    const promise = request(requestOptions);
     clock.tick(100);
     httpsStub.request.firstCall.args[1](responseStub);
     clock.tick(100);
     responseStub.emit("end");
+    return promise.then(response => {
+      assert.equal(response.request.test, requestOptions.test);
+      assert(!requestStub.abort.called);
+    });
   });
 
-  it("should reject the promise when response arrives but does not finish in time", done => {
+  it("should reject the promise when response arrives but does not finish in time", () => {
     requestStub.abort = sinon.stub();
     const responseStub = new ResponseStub();
     responseStub.destroy = sinon.stub();
-    request({ dropRequestAfter: 500 })
-      .catch(error => {
-        assert.equal(error.message, "request timeout");
-        assert(requestStub.abort.called);
-        done();
-      })
-      .catch(done);
+    const promise = request({ dropRequestAfter: 500 });
     clock.tick(100);
     httpsStub.request.firstCall.args[1](responseStub);
     clock.tick(100);
     responseStub.emit("data", "hello");
     clock.tick(300);
+    return promise.then(fail, error => {
+      assert.equal(error.message, "request timeout");
+      assert(requestStub.abort.called);
+    });
   });
 
-  it("should reject the promise when response does not arrive in time", done => {
+  it("should reject the promise when response does not arrive in time", () => {
     requestStub.abort = sinon.stub();
     httpsStub.request.returns(requestStub);
-    request({ dropRequestAfter: 500 })
-      .catch(error => {
-        assert.equal(error.message, "request timeout");
-        assert(requestStub.abort.calledOnce);
-        done();
-      })
-      .catch(done);
+    const promise = request({ dropRequestAfter: 500 });
     clock.tick(500);
+    return promise.then(fail, error => {
+      assert.equal(error.message, "request timeout");
+      assert(requestStub.abort.calledOnce);
+    });
   });
 
-  it("should record timings for non-keep-alive connection", done => {
-    request({ timing: true })
-      .then(response => {
-        assert.deepEqual(response.timings, {
-          socket: 10,
-          lookup: 30,
-          connect: 60,
-          response: 100,
-          end: 150
-        });
-        assert.deepEqual(response.timingPhases, {
-          wait: 10,
-          dns: 20,
-          tcp: 30,
-          firstByte: 40,
-          download: 50,
-          total: 150
-        });
-        done();
-      })
-      .catch(done);
+  it("should record timings for non-keep-alive connection", () => {
+    const promise = request({ timing: true });
     const socketStub = new SocketStub(true);
     clock.tick(10);
     requestStub.emit("socket", socketStub);
@@ -324,29 +291,27 @@ describe("request", () => {
     clock.tick(50);
     responseStub.emit("data", Buffer.from("hello"));
     responseStub.emit("end");
+    return promise.then(response => {
+      assert.deepEqual(response.timings, {
+        socket: 10,
+        lookup: 30,
+        connect: 60,
+        response: 100,
+        end: 150
+      });
+      assert.deepEqual(response.timingPhases, {
+        wait: 10,
+        dns: 20,
+        tcp: 30,
+        firstByte: 40,
+        download: 50,
+        total: 150
+      });
+    });
   });
 
-  it("should record timings for keep-alive connection", done => {
-    request({ timing: true })
-      .then(response => {
-        assert.deepEqual(response.timings, {
-          socket: 10,
-          lookup: 10,
-          connect: 10,
-          response: 30,
-          end: 60
-        });
-        assert.deepEqual(response.timingPhases, {
-          wait: 10,
-          dns: 0,
-          tcp: 0,
-          firstByte: 20,
-          download: 30,
-          total: 60
-        });
-        done();
-      })
-      .catch(done);
+  it("should record timings for keep-alive connection", () => {
+    const promise = request({ timing: true });
     const socketStub = new SocketStub(false);
     clock.tick(10);
     requestStub.emit("socket", socketStub);
@@ -356,34 +321,30 @@ describe("request", () => {
     clock.tick(30);
     responseStub.emit("data", Buffer.from("hello"));
     responseStub.emit("end");
+    return promise.then(response => {
+      assert.deepEqual(response.timings, {
+        socket: 10,
+        lookup: 10,
+        connect: 10,
+        response: 30,
+        end: 60
+      });
+      assert.deepEqual(response.timingPhases, {
+        wait: 10,
+        dns: 0,
+        tcp: 0,
+        firstByte: 20,
+        download: 30,
+        total: 60
+      });
+    });
   });
 
-  it("should record timings for timeout", done => {
+  it("should record timings for timeout", () => {
     requestStub.abort = sinon.stub();
     const responseStub = new ResponseStub();
     responseStub.destroy = sinon.stub();
-    request({ timing: true, dropRequestAfter: 500 })
-      .catch(error => {
-        assert.equal(error.message, "request timeout");
-        assert(requestStub.abort.called);
-        assert.deepEqual(error.timings, {
-          lookup: 10,
-          socket: 10,
-          connect: 10,
-          response: 100,
-          end: undefined
-        });
-        assert.deepEqual(error.timingPhases, {
-          wait: 10,
-          dns: 0,
-          tcp: 0,
-          firstByte: 90,
-          download: undefined,
-          total: undefined
-        });
-        done();
-      })
-      .catch(done);
+    const promise = request({ timing: true, dropRequestAfter: 500 });
     const socketStub = new SocketStub(false);
     clock.tick(10);
     requestStub.emit("socket", socketStub);
@@ -392,5 +353,24 @@ describe("request", () => {
     clock.tick(100);
     responseStub.emit("data", "hello");
     clock.tick(300);
+    return promise.then(fail, error => {
+      assert.equal(error.message, "request timeout");
+      assert(requestStub.abort.called);
+      assert.deepEqual(error.timings, {
+        lookup: 10,
+        socket: 10,
+        connect: 10,
+        response: 100,
+        end: undefined
+      });
+      assert.deepEqual(error.timingPhases, {
+        wait: 10,
+        dns: 0,
+        tcp: 0,
+        firstByte: 90,
+        download: undefined,
+        total: undefined
+      });
+    });
   });
 });
