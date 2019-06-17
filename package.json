@@ -40,8 +40,6 @@
     "typescript": "^3.5.1"
   },
   "dependencies": {
-    "@types/circuit-breaker-js": "^0.0.1",
-    "circuit-breaker-js": "^0.0.1",
     "retry": "^0.12.0"
   }
 }
