@@ -34,15 +34,6 @@ interface Bucket {
   shortCircuits: number;
 }
 
-function createBucket(): Bucket {
-  return {
-    failures: 0,
-    successes: 0,
-    timeouts: 0,
-    shortCircuits: 0
-  };
-}
-
 export type Command = (success: () => void, failure: () => void) => void;
 
 function noop() {}
@@ -57,7 +48,6 @@ export interface CircuitBreakerPublicApi {
 
 export class CircuitBreaker implements CircuitBreakerPublicApi {
   public windowDuration: number;
-  public numBuckets: number;
   public timeoutDuration: number;
   public errorThreshold: number;
   public volumeThreshold: number;
@@ -66,6 +56,7 @@ export class CircuitBreaker implements CircuitBreakerPublicApi {
   public onCircuitClose: (m: Metrics) => void;
 
   private readonly buckets: Bucket[];
+  private bucketIndex: number;
   private state: State;
   private forced?: State;
 
@@ -73,7 +64,6 @@ export class CircuitBreaker implements CircuitBreakerPublicApi {
     options = options || {};
 
     this.windowDuration = options.windowDuration || 10000;
-    this.numBuckets = options.numBuckets || 10;
     this.timeoutDuration = options.timeoutDuration || 3000;
     this.errorThreshold = options.errorThreshold || 50;
     this.volumeThreshold = options.volumeThreshold || 5;
@@ -81,7 +71,17 @@ export class CircuitBreaker implements CircuitBreakerPublicApi {
     this.onCircuitOpen = options.onCircuitOpen || noop;
     this.onCircuitClose = options.onCircuitClose || noop;
 
-    this.buckets = [createBucket()];
+    this.buckets = [];
+    const numberOfBuckets = Math.max(1, options.numBuckets || 10);
+    for (let i = 0; i < numberOfBuckets; ++i) {
+      this.buckets.push({
+        failures: 0,
+        successes: 0,
+        timeouts: 0,
+        shortCircuits: 0
+      });
+    }
+    this.bucketIndex = 0;
     this.state = State.CLOSED;
     this.forced = undefined;
 
@@ -119,32 +119,36 @@ export class CircuitBreaker implements CircuitBreakerPublicApi {
 
   private startTicker() {
     const self = this;
-    let bucketIndex = 0;
-    const bucketDuration = this.windowDuration / this.numBuckets;
+    const bucketDuration = this.windowDuration / this.buckets.length;
 
-    const tick = function() {
-      if (self.buckets.length > self.numBuckets) {
-        self.buckets.shift();
-      }
+    const tick = () => {
+      ++this.bucketIndex;
 
-      bucketIndex++;
-
-      if (bucketIndex > self.numBuckets) {
-        bucketIndex = 0;
+      // FIXME this is very broken as it means that the time
+      //       till CB is changing to half-open state depends on
+      //       the index of the bucket at the time when it opened.
+      if (this.bucketIndex >= this.buckets.length) {
+        this.bucketIndex = 0;
 
         if (self.isOpen()) {
           self.state = State.HALF_OPEN;
         }
       }
 
-      self.buckets.push(createBucket());
+      // Since we are recycling the buckets they need to be
+      // reset before the can be used again.
+      const bucket = this.lastBucket();
+      bucket.failures = 0;
+      bucket.successes = 0;
+      bucket.timeouts = 0;
+      bucket.shortCircuits = 0;
     };
 
     setInterval(tick, bucketDuration).unref();
   }
 
   private lastBucket() {
-    return this.buckets[this.buckets.length - 1];
+    return this.buckets[this.bucketIndex];
   }
 
   private executeCommand(command: Command) {
