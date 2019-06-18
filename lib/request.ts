@@ -12,12 +12,25 @@ const getInterval = (time: [number, number]): number => {
   return Math.round(diff[0] * 1000 + diff[1] / 1000000);
 };
 
+/**
+ * The NodeJS typescript definitions has OutgoingHttpHeaders
+ * with `undefined` as one of the possible values, but NodeJS
+ * runtime will throw an error for undefined values in headers.
+ *
+ * This overwrites the headers type in the RequestOptions
+ * and removes undefined from one of the possible values of headers.
+ */
+export interface OutgoingHttpHeaders {
+  [header: string]: number | string | string[];
+}
+
 export interface ServiceClientRequestOptions extends RequestOptions {
   pathname: string;
   query?: object;
   timing?: boolean;
   dropRequestAfter?: number;
   body?: any;
+  headers?: OutgoingHttpHeaders;
 }
 
 export class ServiceClientResponse {
