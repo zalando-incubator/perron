@@ -1,12 +1,15 @@
 "use strict";
 
+const util = require("util");
 const assert = require("assert");
 const proxyquire = require("proxyquire").noCallThru();
 const sinon = require("sinon");
 const realRequest = require("../dist/request");
 
 const fail = result =>
-  assert.fail(`expected promise to be rejected, got resolved with ${result}`);
+  assert.fail(
+    `expected promise to be rejected, got resolved with ${util.inspect(result)}`
+  );
 
 describe("ServiceClient", () => {
   /**
