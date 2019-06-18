@@ -6,12 +6,6 @@ Added custom error classes for different error types, including ability to disti
 
 Usage of `type` field on `ServiceClientError` to understand the type of the error is now deprecated in favor of `instanceof` checks for new error classes added in this release.
 
-## 0.6.0
-
-### Breaking Changes
-
-In 0.6.0 we changed the fields of `timings` and `timingPhases` on `ServiceClientResponse` to be nullable, or `undefined`able to be accurate. Previously `timings` had `-1` when a field was missing, and `timingPhases` had wrong numbers in those cases.
-
 ## 0.7.0
 
 ### Breaking Changes
@@ -31,3 +25,9 @@ const {ServiceClient} = require('perron')
 So `ServiceClient` is now a named export.
 
 If you were using babel to transpile your code, no changes should be necessary.
+
+## 0.6.0
+
+### Breaking Changes
+
+In 0.6.0 we changed the fields of `timings` and `timingPhases` on `ServiceClientResponse` to be nullable, or `undefined`able to be accurate. Previously `timings` had `-1` when a field was missing, and `timingPhases` had wrong numbers in those cases.
