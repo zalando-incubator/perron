@@ -72,9 +72,13 @@ function logError(err) {
   } else if (err instanceof RequestUserTimeoutError) {
     console.log('Request dropped after timeout specified in `dropRequestAfter` option');
     console.log('Request options were', err.requestOptions);
-  } else if (err instanceof RequestFailedError) {
-    console.log('Unknown error while making the request');
+  } else if (err instanceof RequestNetworkError) {
+    console.log('Network error (socket, dns, etc.)');
     console.log('Request options were', err.requestOptions);
+  } else if (err instanceof InternalError) {
+    // This error should not happen during normal operations
+    // and usually indicates a bug in perron or misconfiguration
+    console.log('Unknown internal error');
   }
 }
 ```

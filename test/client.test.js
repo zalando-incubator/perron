@@ -32,16 +32,17 @@ describe("ServiceClient", () => {
     CircuitOpenError,
     RequestFilterError,
     ResponseFilterError,
-    RequestFailedError,
+    RequestNetworkError,
     RequestConnectionTimeoutError,
     RequestUserTimeoutError,
     MaximumRetriesReachedError,
-    ShouldRetryRejectedError
+    ShouldRetryRejectedError,
+    InternalError
   } = proxyquire("../dist/client", {
     "./request": fakeRequest
   });
   const {
-    RequestError,
+    NetworkError,
     ConnectionTimeoutError,
     UserTimeoutError
   } = fakeRequest;
@@ -189,12 +190,12 @@ describe("ServiceClient", () => {
 
   it("should give a custom error object when request fails", () => {
     const client = new ServiceClient(clientOptions);
-    const requestError = new RequestError("foobar");
+    const requestError = new NetworkError(new Error("foobar"));
     requestStub.returns(Promise.reject(requestError));
     return client.request().then(fail, err => {
       assert(err instanceof ServiceClient.Error);
       assert.equal(err.type, ServiceClient.REQUEST_FAILED);
-      assert(err instanceof RequestFailedError);
+      assert(err instanceof RequestNetworkError);
     });
   });
 
@@ -216,14 +217,23 @@ describe("ServiceClient", () => {
     });
   });
 
+  it("should give a custom error when there is an internal error", () => {
+    const client = new ServiceClient(clientOptions);
+    requestStub.rejects(new TypeError("foobar"));
+    return client.request().then(fail, err => {
+      assert(err instanceof ServiceClient.Error);
+      assert(err instanceof InternalError);
+    });
+  });
+
   it("should copy timings to custom error when request fails", () => {
     const client = new ServiceClient(clientOptions);
-    const requestError = new RequestError("foobar", {}, timings);
+    const requestError = new NetworkError(new Error("foobar"), {}, timings);
     requestStub.returns(Promise.reject(requestError));
     return client.request().then(fail, err => {
       assert(err instanceof ServiceClient.Error);
       assert.equal(err.type, ServiceClient.REQUEST_FAILED);
-      assert(err instanceof RequestFailedError);
+      assert(err instanceof RequestNetworkError);
       assert.deepEqual(err.timings, timings);
       assert.deepEqual(err.timingPhases, timingPhases);
     });
@@ -232,10 +242,14 @@ describe("ServiceClient", () => {
   it("should copy timings to custom error when request fails", () => {
     const client = new ServiceClient(clientOptions);
     const requestOptions = { hostname: "foo" };
-    const requestError = new RequestError("foobar", requestOptions, timings);
+    const requestError = new NetworkError(
+      new Error("foobar"),
+      requestOptions,
+      timings
+    );
     requestStub.returns(Promise.reject(requestError));
     return client.request().then(fail, err => {
-      assert(err instanceof RequestFailedError);
+      assert(err instanceof RequestNetworkError);
       assert.deepStrictEqual(err.requestOptions, requestOptions);
     });
   });
@@ -386,7 +400,7 @@ describe("ServiceClient", () => {
       body: "{}"
     });
     const errorResponse = Promise.resolve(
-      Promise.reject(new RequestError("timeout"))
+      Promise.reject(new ConnectionTimeoutError("timeout"))
     );
 
     const responses = [
@@ -622,7 +636,7 @@ describe("ServiceClient", () => {
       onRetry: retrySpy
     };
     const errorResponse = Promise.resolve(
-      Promise.reject(new RequestError("timeout"))
+      Promise.reject(new ConnectionTimeoutError("timeout"))
     );
 
     const responses = [
@@ -697,7 +711,7 @@ describe("ServiceClient", () => {
   it("should prepend the ServiceClient name to errors", () => {
     clientOptions.name = "TestClient";
     const client = new ServiceClient(clientOptions);
-    const requestError = new RequestError("foobar");
+    const requestError = new NetworkError(new Error("foobar"));
     requestStub.returns(Promise.reject(requestError));
     return client.request().then(fail, err => {
       assert.equal(err.message, "TestClient: HTTP Request failed. foobar");
@@ -706,7 +720,7 @@ describe("ServiceClient", () => {
 
   it("should default to hostname in errors if no name is specified", () => {
     const client = new ServiceClient(clientOptions);
-    const requestError = new RequestError("foobar");
+    const requestError = new NetworkError(new Error("foobar"));
     requestStub.returns(Promise.reject(requestError));
     return client.request().then(fail, err => {
       assert.equal(

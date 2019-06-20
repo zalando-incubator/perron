@@ -87,6 +87,17 @@ export class RequestError extends Error {
   }
 }
 
+export class NetworkError extends RequestError {
+  constructor(
+    originalError: Error,
+    requestOptions: ServiceClientRequestOptions,
+    timings?: Timings
+  ) {
+    super(originalError.message, requestOptions, timings);
+    this.stack = originalError.stack;
+  }
+}
+
 export class ConnectionTimeoutError extends RequestError {
   constructor(requestOptions: ServiceClientRequestOptions, timings?: Timings) {
     super("socket timeout", requestOptions, timings);
@@ -218,7 +229,7 @@ export const request = (
       });
     }
     requestObject.on("error", error =>
-      reject(new RequestError(error.message, options, timings))
+      reject(new NetworkError(error, options, timings))
     );
     requestObject.on("timeout", () => {
       requestObject.abort();
