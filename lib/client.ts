@@ -3,6 +3,7 @@ import * as retry from "retry";
 import * as url from "url";
 import {
   ConnectionTimeoutError,
+  NetworkError,
   request,
   RequestError,
   ServiceClientRequestOptions,
@@ -222,7 +223,7 @@ export class ResponseFilterError extends ServiceClientError {
   }
 }
 
-export class RequestFailedError extends ServiceClientError {
+export class RequestNetworkError extends ServiceClientError {
   public requestOptions: ServiceClientRequestOptions;
   constructor(originalError: RequestError, name: string) {
     super(originalError, ServiceClient.REQUEST_FAILED, undefined, name);
@@ -230,8 +231,20 @@ export class RequestFailedError extends ServiceClientError {
   }
 }
 
-export class RequestConnectionTimeoutError extends RequestFailedError {}
-export class RequestUserTimeoutError extends RequestFailedError {}
+export class RequestConnectionTimeoutError extends ServiceClientError {
+  public requestOptions: ServiceClientRequestOptions;
+  constructor(originalError: RequestError, name: string) {
+    super(originalError, ServiceClient.REQUEST_FAILED, undefined, name);
+    this.requestOptions = originalError.requestOptions;
+  }
+}
+export class RequestUserTimeoutError extends ServiceClientError {
+  public requestOptions: ServiceClientRequestOptions;
+  constructor(originalError: RequestError, name: string) {
+    super(originalError, ServiceClient.REQUEST_FAILED, undefined, name);
+    this.requestOptions = originalError.requestOptions;
+  }
+}
 
 export class ShouldRetryRejectedError extends ServiceClientError {
   constructor(originalError: Error, type: string, name: string) {
@@ -242,6 +255,12 @@ export class ShouldRetryRejectedError extends ServiceClientError {
 export class MaximumRetriesReachedError extends ServiceClientError {
   constructor(originalError: Error, type: string, name: string) {
     super(originalError, type, undefined, name);
+  }
+}
+
+export class InternalError extends ServiceClientError {
+  constructor(originalError: Error, name: string) {
+    super(originalError, ServiceClient.INTERNAL_ERROR, undefined, name);
   }
 }
 
@@ -323,8 +342,10 @@ const requestWithFilters = (
               throw new RequestConnectionTimeoutError(error, client.name);
             } else if (error instanceof UserTimeoutError) {
               throw new RequestUserTimeoutError(error, client.name);
+            } else if (error instanceof NetworkError) {
+              throw new RequestNetworkError(error, client.name);
             } else {
-              throw new RequestFailedError(error, client.name);
+              throw error;
             }
           })
     )
@@ -417,6 +438,13 @@ export class ServiceClient {
    */
   public static CIRCUIT_OPEN =
     "Circuit breaker is open and prevented the request";
+
+  /**
+   * Use `instanceof CircuitOpenError` check instead
+   * @deprecated since 0.9.0
+   */
+  public static INTERNAL_ERROR =
+    "Perron internal error due to a bug or misconfiguration";
 
   /**
    * Default list of post-filters which includes
@@ -602,9 +630,15 @@ export class ServiceClient {
           }
         );
       })
-    ).catch((error: ServiceClientError) => {
-      error.retryErrors = retryErrors;
-      throw error;
+    ).catch((error: unknown) => {
+      const rawError =
+        error instanceof Error ? error : new Error(String(error));
+      const wrappedError =
+        rawError instanceof ServiceClientError
+          ? rawError
+          : new InternalError(rawError, this.name);
+      wrappedError.retryErrors = retryErrors;
+      throw wrappedError;
     });
   }
 }
