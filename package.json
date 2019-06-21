@@ -7,7 +7,7 @@
   },
   "main": "dist/client.js",
   "scripts": {
-    "prepublishOnly": "npm run test && npm run docs",
+    "prepublishOnly": "npm run test",
     "lint": "eslint . --ext .ts,.tsx,.js",
     "test": "npm run lint && tsc && mocha --exit test",
     "test-cov": "npm run lint && tsc && nyc --check-coverage --lines 90 --functions 85 --branches 85 mocha --exit test",
