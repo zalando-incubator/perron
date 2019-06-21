@@ -36,6 +36,10 @@ describe("CircuitBreaker", function() {
     breaker = new CircuitBreaker();
   });
 
+  afterEach(function() {
+    clock.restore();
+  });
+
   describe("with a working service", function() {
     it("should run the command", function() {
       const command = sinon.spy();
