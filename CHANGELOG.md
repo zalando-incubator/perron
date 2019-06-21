@@ -2,6 +2,13 @@
 
 Added custom error classes for different error types, including ability to distinguish connection timeout error, user timeout error, and maximum retries error. For more details see [Handling Errors section in the README](./README.md#handling-errors)
 
+### Breaking Changes
+
+TypeScript type definition for request headers has been made more
+strict to avoid runtime errors caused by `undefined` headers.
+
+See [pull request](https://github.com/zalando-incubator/perron/pull/77/files) for details. 
+
 ### Deprecation Notices
 
 Usage of `type` field on `ServiceClientError` to understand the type of the error is now deprecated in favor of `instanceof` checks for new error classes added in this release.
