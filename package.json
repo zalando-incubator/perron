@@ -1,6 +1,6 @@
 {
   "name": "perron",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "A sane client for web services",
   "engines": {
     "node": ">=8.0.0"
@@ -9,9 +9,9 @@
   "scripts": {
     "prepublishOnly": "npm run test",
     "lint": "eslint . --ext .ts,.tsx,.js",
-    "test": "npm run lint && tsc && mocha --exit test",
-    "test-cov": "npm run lint && tsc && nyc --check-coverage --lines 90 --functions 85 --branches 85 mocha --exit test",
-    "tdd": "mocha test --exit --watch"
+    "test": "npm run lint && tsc && mocha test",
+    "test-cov": "npm run lint && tsc && nyc --check-coverage --lines 90 --functions 85 --branches 85 mocha test",
+    "tdd": "mocha test --watch"
   },
   "repository": {
     "type": "git",

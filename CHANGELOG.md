@@ -1,3 +1,9 @@
+## 0.9.1
+
+* Having a circuit breaker configured no longer results in Node process
+not exiting properly.
+* Improved circuit breaker performance and memory usage.
+
 ## 0.9.0
 
 Added custom error classes for different error types, including ability to distinguish connection timeout error, user timeout error, and maximum retries error. For more details see [Handling Errors section in the README](./README.md#handling-errors)
