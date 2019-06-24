@@ -17,7 +17,13 @@ import {
   UserTimeoutError
 } from "./request";
 
-export { ServiceClientResponse, ServiceClientRequestOptions };
+export {
+  CircuitBreaker,
+  CircuitBreakerOptions,
+  CircuitBreakerPublicApi,
+  ServiceClientResponse,
+  ServiceClientRequestOptions
+};
 
 /**
  * This interface defines factory function for getting a circuit breaker
