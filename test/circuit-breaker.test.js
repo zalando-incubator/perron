@@ -1,5 +1,5 @@
 const { CircuitBreaker } = require("../dist/circuit-breaker");
-const assert = require("assert").strict;
+const assert = require("assert");
 const sinon = require("sinon");
 
 describe("CircuitBreaker", function() {
@@ -52,21 +52,21 @@ describe("CircuitBreaker", function() {
       success();
 
       const bucket = breaker.lastBucket();
-      assert.equal(bucket.successes, 1);
+      assert.strictEqual(bucket.successes, 1);
     });
 
     it("should be able to notify the breaker if the command failed", function() {
       fail();
 
       const bucket = breaker.lastBucket();
-      assert.equal(bucket.failures, 1);
+      assert.strictEqual(bucket.failures, 1);
     });
 
     it("should record a timeout if not a success or failure", function() {
       timeout();
 
       const bucket = breaker.lastBucket();
-      assert.equal(bucket.timeouts, 1);
+      assert.strictEqual(bucket.timeouts, 1);
     });
 
     it("should not call timeout if there is a success", function() {
@@ -77,7 +77,7 @@ describe("CircuitBreaker", function() {
       clock.tick(1000);
 
       const bucket = breaker.lastBucket();
-      assert.equal(bucket.timeouts, 0);
+      assert.strictEqual(bucket.timeouts, 0);
     });
 
     it("should not call timeout if there is a failure", function() {
@@ -88,7 +88,7 @@ describe("CircuitBreaker", function() {
       clock.tick(1000);
 
       const bucket = breaker.lastBucket();
-      assert.equal(bucket.timeouts, 0);
+      assert.strictEqual(bucket.timeouts, 0);
     });
 
     it("should not record a success when there is a timeout", function() {
@@ -103,7 +103,7 @@ describe("CircuitBreaker", function() {
       breaker.run(command);
 
       const bucket = breaker.lastBucket();
-      assert.equal(bucket.successes, 0);
+      assert.strictEqual(bucket.successes, 0);
     });
 
     it("should not record a failure when there is a timeout", function() {
@@ -118,7 +118,7 @@ describe("CircuitBreaker", function() {
       breaker.run(command);
 
       const bucket = breaker.lastBucket();
-      assert.equal(bucket.failures, 0);
+      assert.strictEqual(bucket.failures, 0);
     });
   });
 
@@ -150,7 +150,7 @@ describe("CircuitBreaker", function() {
       sinon.assert.notCalled(command);
 
       const bucket = breaker.lastBucket();
-      assert.equal(bucket.shortCircuits, 1);
+      assert.strictEqual(bucket.shortCircuits, 1);
     });
   });
 
@@ -163,7 +163,7 @@ describe("CircuitBreaker", function() {
       fail();
       success();
 
-      assert.equal(breaker.isOpen(), false);
+      assert.strictEqual(breaker.isOpen(), false);
     });
 
     it("should be true if errors are above the threshold", function() {
@@ -176,7 +176,7 @@ describe("CircuitBreaker", function() {
       fail();
       success();
 
-      assert.equal(breaker.isOpen(), true);
+      assert.strictEqual(breaker.isOpen(), true);
     });
 
     it("should be true if timeouts are above the threshold", function() {
@@ -187,7 +187,7 @@ describe("CircuitBreaker", function() {
       timeout();
       success();
 
-      assert.equal(breaker.isOpen(), true);
+      assert.strictEqual(breaker.isOpen(), true);
     });
 
     it("should maintain failed state after window has passed", function() {
@@ -203,7 +203,7 @@ describe("CircuitBreaker", function() {
 
       fail();
 
-      assert.equal(breaker.isOpen(), true);
+      assert.strictEqual(breaker.isOpen(), true);
     });
 
     it("should retry after window has elapsed", function() {
@@ -232,7 +232,7 @@ describe("CircuitBreaker", function() {
 
       clock.tick(1001);
 
-      assert.equal(breaker.isOpen(), true);
+      assert.strictEqual(breaker.isOpen(), true);
     });
 
     it("should not be broken without having more than minimum number of errors", function() {
@@ -241,7 +241,7 @@ describe("CircuitBreaker", function() {
 
       fail();
 
-      assert.equal(breaker.isOpen(), false);
+      assert.strictEqual(breaker.isOpen(), false);
     });
   });
 
@@ -294,7 +294,7 @@ describe("CircuitBreaker", function() {
       breaker.run(command);
 
       sinon.assert.called(command);
-      assert.equal(breaker.isOpen(), false);
+      assert.strictEqual(breaker.isOpen(), false);
     });
 
     it("should not collect stats", function() {
@@ -316,7 +316,7 @@ describe("CircuitBreaker", function() {
       breaker.run(command);
 
       sinon.assert.called(command);
-      assert.equal(breaker.isOpen(), false);
+      assert.strictEqual(breaker.isOpen(), false);
     });
   });
 
@@ -335,7 +335,7 @@ describe("CircuitBreaker", function() {
       breaker.run(command);
 
       sinon.assert.notCalled(command);
-      assert.equal(breaker.isOpen(), true);
+      assert.strictEqual(breaker.isOpen(), true);
     });
 
     it("should not collect stats", function() {
@@ -357,7 +357,7 @@ describe("CircuitBreaker", function() {
       breaker.run(command);
 
       sinon.assert.notCalled(command);
-      assert.equal(breaker.isOpen(), true);
+      assert.strictEqual(breaker.isOpen(), true);
     });
   });
 
@@ -377,7 +377,7 @@ describe("CircuitBreaker", function() {
       breaker.run(command);
 
       sinon.assert.notCalled(command);
-      assert.equal(breaker.isOpen(), true);
+      assert.strictEqual(breaker.isOpen(), true);
     });
 
     it("should recover from a force-open circuit", function() {
@@ -395,7 +395,7 @@ describe("CircuitBreaker", function() {
       breaker.run(command);
 
       sinon.assert.called(command);
-      assert.equal(breaker.isOpen(), false);
+      assert.strictEqual(breaker.isOpen(), false);
     });
   });
 });
