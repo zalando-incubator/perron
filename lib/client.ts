@@ -512,15 +512,7 @@ export class ServiceClient {
     }
 
     if (typeof options.circuitBreaker === "object") {
-      const breakerOptions = {
-        windowDuration: 10000,
-        numBuckets: 10,
-        timeoutDuration: 2000,
-        errorThreshold: 50,
-        volumeThreshold: 10,
-        ...options.circuitBreaker
-      };
-      this.breaker = new CircuitBreaker(breakerOptions);
+      this.breaker = new CircuitBreaker(options.circuitBreaker);
     }
 
     if (typeof options.circuitBreaker === "function") {
@@ -533,7 +525,7 @@ export class ServiceClient {
 
   /**
    * Return an instance of a CircuitBreaker based on params.
-   * Choses between a factory and a single static breaker
+   * Chooses between a factory and a single static breaker
    */
   public getCircuitBreaker(
     params: ServiceClientRequestOptions
