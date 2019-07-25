@@ -40,7 +40,7 @@ Each call to `request` method will return a Promise, that would either resolve t
 }
 ```
 
-`request` method accepts an objects with all of the same properties as [https.request](https://nodejs.org/api/https.html#https_https_request_options_callback) method in Node.js, except from a `hostname` field, which is taken from the options passed when creating an instance of `ServiceClient`. Additionally you can add a `dropRequestAfter` field, which defines a timespan in ms after which the request is dropped and the promise is rejected with a `request timeout` error.
+`request` method accepts an objects with all of the same properties as [https.request](https://nodejs.org/api/https.html#https_https_request_options_callback) method in Node.js, except from a `hostname` field, which is taken from the options passed when creating an instance of `ServiceClient`. Additionally you can add a `timeout` and `readTimeout` fields, which define time spans in ms for socket connection and read timeouts.
 
 ## Handling Errors
 
@@ -68,6 +68,9 @@ function logError(err) {
     console.log('Circuit breaker is open');
   } else if (err instanceof RequestConnectionTimeoutError) {
     console.log('Connection timeout');
+    console.log('Request options were', err.requestOptions);
+  } else if (err instanceof RequestReadTimeoutError) {
+    console.log('Socket read timeout');
     console.log('Request options were', err.requestOptions);
   } else if (err instanceof RequestUserTimeoutError) {
     console.log('Request dropped after timeout specified in `dropRequestAfter` option');
