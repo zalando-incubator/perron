@@ -8,6 +8,7 @@ import * as url from "url";
 import {
   ConnectionTimeoutError,
   NetworkError,
+  ReadTimeoutError,
   request,
   RequestError,
   ServiceClientRequestOptions,
@@ -245,6 +246,15 @@ export class RequestConnectionTimeoutError extends ServiceClientError {
     this.requestOptions = originalError.requestOptions;
   }
 }
+
+export class RequestReadTimeoutError extends ServiceClientError {
+  public requestOptions: ServiceClientRequestOptions;
+  constructor(originalError: RequestError, name: string) {
+    super(originalError, ServiceClient.REQUEST_FAILED, undefined, name);
+    this.requestOptions = originalError.requestOptions;
+  }
+}
+
 export class RequestUserTimeoutError extends ServiceClientError {
   public requestOptions: ServiceClientRequestOptions;
   constructor(originalError: RequestError, name: string) {
@@ -349,6 +359,8 @@ const requestWithFilters = (
               throw new RequestConnectionTimeoutError(error, client.name);
             } else if (error instanceof UserTimeoutError) {
               throw new RequestUserTimeoutError(error, client.name);
+            } else if (error instanceof ReadTimeoutError) {
+              throw new RequestReadTimeoutError(error, client.name);
             } else if (error instanceof NetworkError) {
               throw new RequestNetworkError(error, client.name);
             } else {
