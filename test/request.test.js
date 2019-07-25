@@ -10,6 +10,10 @@ const stream = require("stream");
 class ResponseStub extends EventEmitter {}
 
 class RequestStub extends EventEmitter {
+  constructor() {
+    super();
+    this.setTimeout = sinon.stub();
+  }
   end() {}
 }
 
@@ -17,6 +21,8 @@ class SocketStub extends EventEmitter {
   constructor(connecting) {
     super();
     this.connecting = connecting;
+    this.setTimeout = sinon.stub();
+    this.destroy = sinon.stub();
   }
 }
 
@@ -127,7 +133,7 @@ describe("request", () => {
   it("should resolve the promise with full response on success", () => {
     const promise = request();
     const responseStub = new ResponseStub();
-    httpsStub.request.firstCall.args[1](responseStub);
+    requestStub.emit("response", responseStub);
     responseStub.emit("data", Buffer.from("foo"));
     responseStub.emit("data", Buffer.from("bar"));
     responseStub.emit("end");
@@ -139,7 +145,7 @@ describe("request", () => {
   it("should reject the promise on response error", () => {
     const promise = request();
     const responseStub = new ResponseStub();
-    httpsStub.request.firstCall.args[1](responseStub);
+    requestStub.emit("response", responseStub);
     responseStub.emit("data", Buffer.from("foo"));
     responseStub.emit("error", new Error("test"));
     return promise.then(fail, error => {
@@ -150,7 +156,7 @@ describe("request", () => {
   it("should support responses chunked between utf8 boundaries", () => {
     const promise = request();
     const responseStub = new ResponseStub();
-    httpsStub.request.firstCall.args[1](responseStub);
+    requestStub.emit("response", responseStub);
     const data = Buffer.from("я");
     responseStub.emit("data", Buffer.from([data[0]]));
     responseStub.emit("data", Buffer.from([data[1]]));
@@ -168,7 +174,7 @@ describe("request", () => {
       responseStub.headers = {
         "content-encoding": "gzip"
       };
-      httpsStub.request.firstCall.args[1](responseStub);
+      requestStub.emit("response", responseStub);
       return promise.then(response => {
         assert.equal(response.body, "foobar");
         assert.equal(response.statusCode, 200);
@@ -183,20 +189,49 @@ describe("request", () => {
     responseStub.headers = {
       "content-encoding": "gzip"
     };
-    httpsStub.request.firstCall.args[1](responseStub);
+    requestStub.emit("response", responseStub);
     return promise.then(fail, error => {
       assert.equal(error.message, "incorrect header check");
     });
   });
 
-  it("should reject the promise on socket timeout", () => {
-    requestStub.abort = sinon.stub();
-    const promise = request();
-    requestStub.emit("timeout");
-    return promise.then(fail, error => {
-      assert.equal(error.message, "socket timeout");
-      assert(requestStub.abort.calledOnce);
-    });
+  it("should reject the promise on connection timeout", done => {
+    const timeout = 100;
+    const host = "example.org";
+
+    request({ timeout, host })
+      .catch(error => {
+        assert.strictEqual(error.message, "socket timeout");
+        sinon.assert.calledWith(socketStub.setTimeout.firstCall, timeout);
+        sinon.assert.calledOnce(socketStub.setTimeout);
+        sinon.assert.calledOnce(socketStub.destroy);
+        done();
+      })
+      .catch(done);
+
+    const socketStub = new SocketStub(true);
+    requestStub.emit("socket", socketStub);
+    socketStub.setTimeout.invokeCallback();
+  });
+
+  it("should reject the promise on read timeout", done => {
+    const readTimeout = 100;
+    const host = "example.org";
+
+    request({ timeout: readTimeout, host })
+      .catch(error => {
+        assert.strictEqual(error.message, "read timeout");
+        sinon.assert.calledWith(requestStub.setTimeout.firstCall, readTimeout);
+        sinon.assert.calledOnce(requestStub.setTimeout);
+        sinon.assert.calledOnce(requestStub.socket.destroy);
+        done();
+      })
+      .catch(done);
+
+    const socketStub = new SocketStub(false);
+    requestStub.socket = socketStub;
+    requestStub.emit("socket", socketStub);
+    requestStub.setTimeout.invokeCallback();
   });
 
   it("should resolve the promise when response finishes in time", () => {
@@ -204,7 +239,7 @@ describe("request", () => {
     const responseStub = new ResponseStub();
     const promise = request({ dropRequestAfter: 500 });
     clock.tick(100);
-    httpsStub.request.firstCall.args[1](responseStub);
+    requestStub.emit("response", responseStub);
     clock.tick(100);
     responseStub.emit("data", Buffer.from("hello"));
     clock.tick(100);
@@ -220,7 +255,7 @@ describe("request", () => {
     const responseStub = new ResponseStub();
     const promise = request({ dropRequestAfter: 500 });
     clock.tick(100);
-    httpsStub.request.firstCall.args[1](responseStub);
+    requestStub.emit("response", responseStub);
     clock.tick(100);
     responseStub.emit("end");
     return promise.then(response => {
@@ -237,7 +272,7 @@ describe("request", () => {
     };
     const promise = request(requestOptions);
     clock.tick(100);
-    httpsStub.request.firstCall.args[1](responseStub);
+    requestStub.emit("response", responseStub);
     clock.tick(100);
     responseStub.emit("end");
     return promise.then(response => {
@@ -252,7 +287,7 @@ describe("request", () => {
     responseStub.destroy = sinon.stub();
     const promise = request({ dropRequestAfter: 500 });
     clock.tick(100);
-    httpsStub.request.firstCall.args[1](responseStub);
+    requestStub.emit("response", responseStub);
     clock.tick(100);
     responseStub.emit("data", "hello");
     clock.tick(300);
@@ -284,7 +319,7 @@ describe("request", () => {
     socketStub.emit("connect");
     clock.tick(40);
     const responseStub = new ResponseStub();
-    httpsStub.request.firstCall.args[1](responseStub);
+    requestStub.emit("response", responseStub);
     clock.tick(50);
     responseStub.emit("data", Buffer.from("hello"));
     responseStub.emit("end");
@@ -314,7 +349,7 @@ describe("request", () => {
     requestStub.emit("socket", socketStub);
     clock.tick(20);
     const responseStub = new ResponseStub();
-    httpsStub.request.firstCall.args[1](responseStub);
+    requestStub.emit("response", responseStub);
     clock.tick(30);
     responseStub.emit("data", Buffer.from("hello"));
     responseStub.emit("end");
@@ -346,7 +381,7 @@ describe("request", () => {
     clock.tick(10);
     requestStub.emit("socket", socketStub);
     clock.tick(90);
-    httpsStub.request.firstCall.args[1](responseStub);
+    requestStub.emit("response", responseStub);
     clock.tick(100);
     responseStub.emit("data", "hello");
     clock.tick(300);
