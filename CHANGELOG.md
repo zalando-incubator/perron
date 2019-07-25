@@ -1,3 +1,8 @@
+## 0.10.0
+
+* Deprecated `dropRequestAfter` in favor of more precise `readTimeout`
+and `timeout` options.
+
 ## 0.9.1
 
 * Having a circuit breaker configured no longer results in Node process
