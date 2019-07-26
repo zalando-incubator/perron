@@ -163,20 +163,19 @@ export class CircuitBreaker implements CircuitBreakerPublicApi {
   }
 
   private executeCommand(command: Command) {
-    const self = this;
     let timeout: NodeJS.Timer | undefined;
 
-    const increment = function(prop: keyof Bucket) {
-      return function() {
+    const increment = (prop: keyof Bucket) => {
+      return () => {
         if (!timeout) {
           return;
         }
 
-        const bucket = self.lastBucket();
+        const bucket = this.lastBucket();
         bucket[prop]++;
 
-        if (self.forced == null) {
-          self.updateState();
+        if (this.forced === undefined) {
+          this.updateState();
         }
 
         clearTimeout(timeout);
