@@ -27,13 +27,6 @@ export interface Metrics {
   errorPercentage: number;
 }
 
-interface Bucket {
-  failures: number;
-  successes: number;
-  timeouts: number;
-  shortCircuits: number;
-}
-
 export type Command = (success: () => void, failure: () => void) => void;
 
 function noop() {}
@@ -44,6 +37,21 @@ export interface CircuitBreakerPublicApi {
   forceOpen(): void;
   unforce(): void;
   isOpen(): boolean;
+}
+
+// When changing this interface you also need to change `clearBucket` implementation
+interface Bucket {
+  failures: number;
+  successes: number;
+  timeouts: number;
+  shortCircuits: number;
+}
+
+function clearBucket(bucket: Bucket) {
+  bucket.failures = 0;
+  bucket.successes = 0;
+  bucket.timeouts = 0;
+  bucket.shortCircuits = 0;
 }
 
 export class CircuitBreaker implements CircuitBreakerPublicApi {
@@ -136,12 +144,8 @@ export class CircuitBreaker implements CircuitBreakerPublicApi {
       }
 
       // Since we are recycling the buckets they need to be
-      // reset before the can be used again.
-      const bucket = this.lastBucket();
-      bucket.failures = 0;
-      bucket.successes = 0;
-      bucket.timeouts = 0;
-      bucket.shortCircuits = 0;
+      // reset before they can be used again.
+      clearBucket(this.lastBucket());
     };
 
     setInterval(tick, bucketDuration).unref();
