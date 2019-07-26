@@ -51,21 +51,21 @@ describe("CircuitBreaker", function() {
     it("should be able to notify the breaker if the command was successful", function() {
       success();
 
-      const bucket = breaker.lastBucket();
+      const bucket = breaker.currentBucket();
       assert.strictEqual(bucket.successes, 1);
     });
 
     it("should be able to notify the breaker if the command failed", function() {
       fail();
 
-      const bucket = breaker.lastBucket();
+      const bucket = breaker.currentBucket();
       assert.strictEqual(bucket.failures, 1);
     });
 
     it("should record a timeout if not a success or failure", function() {
       timeout();
 
-      const bucket = breaker.lastBucket();
+      const bucket = breaker.currentBucket();
       assert.strictEqual(bucket.timeouts, 1);
     });
 
@@ -76,7 +76,7 @@ describe("CircuitBreaker", function() {
       clock.tick(1000);
       clock.tick(1000);
 
-      const bucket = breaker.lastBucket();
+      const bucket = breaker.currentBucket();
       assert.strictEqual(bucket.timeouts, 0);
     });
 
@@ -87,7 +87,7 @@ describe("CircuitBreaker", function() {
       clock.tick(1000);
       clock.tick(1000);
 
-      const bucket = breaker.lastBucket();
+      const bucket = breaker.currentBucket();
       assert.strictEqual(bucket.timeouts, 0);
     });
 
@@ -102,7 +102,7 @@ describe("CircuitBreaker", function() {
 
       breaker.run(command);
 
-      const bucket = breaker.lastBucket();
+      const bucket = breaker.currentBucket();
       assert.strictEqual(bucket.successes, 0);
     });
 
@@ -117,7 +117,7 @@ describe("CircuitBreaker", function() {
 
       breaker.run(command);
 
-      const bucket = breaker.lastBucket();
+      const bucket = breaker.currentBucket();
       assert.strictEqual(bucket.failures, 0);
     });
   });
@@ -149,7 +149,7 @@ describe("CircuitBreaker", function() {
 
       sinon.assert.notCalled(command);
 
-      const bucket = breaker.lastBucket();
+      const bucket = breaker.currentBucket();
       assert.strictEqual(bucket.shortCircuits, 1);
     });
   });

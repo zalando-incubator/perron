@@ -152,13 +152,13 @@ export class CircuitBreaker implements CircuitBreakerPublicApi {
 
       // Since we are recycling the buckets they need to be
       // reset before they can be used again.
-      clearBucket(this.lastBucket());
+      clearBucket(this.currentBucket());
     };
 
     setInterval(tick, bucketDuration).unref();
   }
 
-  private lastBucket() {
+  private currentBucket() {
     return this.buckets[this.bucketIndex];
   }
 
@@ -170,7 +170,7 @@ export class CircuitBreaker implements CircuitBreakerPublicApi {
         return;
       }
 
-      const bucket = this.lastBucket();
+      const bucket = this.currentBucket();
       bucket[prop]++;
 
       if (this.forced === undefined) {
@@ -190,7 +190,7 @@ export class CircuitBreaker implements CircuitBreakerPublicApi {
   private executeFallback(fallback: () => void) {
     fallback();
 
-    const bucket = this.lastBucket();
+    const bucket = this.currentBucket();
     bucket.shortCircuits++;
   }
 
@@ -220,7 +220,7 @@ export class CircuitBreaker implements CircuitBreakerPublicApi {
 
     if (this.state == State.HALF_OPEN) {
       const lastCommandFailed =
-        !this.lastBucket().successes && metrics.errorCount > 0;
+        !this.currentBucket().successes && metrics.errorCount > 0;
 
       if (lastCommandFailed) {
         this.state = State.OPEN;
@@ -237,7 +237,7 @@ export class CircuitBreaker implements CircuitBreakerPublicApi {
         this.state = State.OPEN;
         setTimeout(() => {
           this.state = State.HALF_OPEN;
-          clearBucket(this.lastBucket());
+          clearBucket(this.currentBucket());
         }, this.waitDurationInOpenState).unref();
         this.onCircuitOpen(metrics);
       }
