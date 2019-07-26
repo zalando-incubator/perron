@@ -182,6 +182,7 @@ export class CircuitBreaker implements CircuitBreakerPublicApi {
     };
 
     timeout = setTimeout(increment, this.timeoutDuration, "timeouts");
+    timeout.unref();
 
     command(() => increment("successes"), () => increment("failures"));
   }
