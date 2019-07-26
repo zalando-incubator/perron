@@ -162,7 +162,7 @@ export const request = (
   }
 
   const connectionTimeout = options.timeout || DEFAULT_CONNECTION_TIMEOUT;
-  const readTimeout = options.timeout || DEFAULT_READ_TIMEOUT;
+  const readTimeout = options.readTimeout || DEFAULT_READ_TIMEOUT;
 
   const httpRequestFn =
     options.protocol === "https:" ? httpsRequest : httpRequest;

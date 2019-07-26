@@ -218,7 +218,7 @@ describe("request", () => {
     const readTimeout = 100;
     const host = "example.org";
 
-    request({ timeout: readTimeout, host })
+    request({ readTimeout, host })
       .catch(error => {
         assert.strictEqual(error.message, "read timeout");
         sinon.assert.calledWith(requestStub.setTimeout.firstCall, readTimeout);
