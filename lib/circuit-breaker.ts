@@ -3,8 +3,16 @@
 export interface CircuitBreakerOptions {
   /** milliseconds */
   windowDuration?: number;
+  /**
+   * The time in ms that the CircuitBreaker should wait
+   * before transitioning from open to half-open.
+   */
+  waitDurationInOpenState?: number;
   numBuckets?: number;
-  /** milliseconds */
+  /**
+   * @deprecated Since 0.11.0
+   * Timeouts should be controlled from the main ServiceClient config
+   */
   timeoutDuration?: number;
   /** percentage */
   errorThreshold?: number;
@@ -56,6 +64,11 @@ function clearBucket(bucket: Bucket) {
 
 export class CircuitBreaker implements CircuitBreakerPublicApi {
   public windowDuration: number;
+  public waitDurationInOpenState: number;
+  /**
+   * @deprecated Since 0.11.0
+   * Timeouts should be controlled from the main ServiceClient config
+   */
   public timeoutDuration: number;
   public errorThreshold: number;
   public volumeThreshold: number;
@@ -72,6 +85,8 @@ export class CircuitBreaker implements CircuitBreakerPublicApi {
     options = options || {};
 
     this.windowDuration = options.windowDuration || 10000;
+    this.waitDurationInOpenState =
+      options.waitDurationInOpenState || this.windowDuration / 2;
     this.timeoutDuration = options.timeoutDuration || 3000;
     this.errorThreshold = options.errorThreshold || 50;
     this.volumeThreshold = options.volumeThreshold || 5;
@@ -126,21 +141,13 @@ export class CircuitBreaker implements CircuitBreakerPublicApi {
   }
 
   private startTicker() {
-    const self = this;
     const bucketDuration = this.windowDuration / this.buckets.length;
 
     const tick = () => {
       ++this.bucketIndex;
 
-      // FIXME this is very broken as it means that the time
-      //       till CB is changing to half-open state depends on
-      //       the index of the bucket at the time when it opened.
       if (this.bucketIndex >= this.buckets.length) {
         this.bucketIndex = 0;
-
-        if (self.isOpen()) {
-          self.state = State.HALF_OPEN;
-        }
       }
 
       // Since we are recycling the buckets they need to be
@@ -230,6 +237,10 @@ export class CircuitBreaker implements CircuitBreakerPublicApi {
 
       if (overThreshold) {
         this.state = State.OPEN;
+        setTimeout(() => {
+          this.state = State.HALF_OPEN;
+          clearBucket(this.lastBucket());
+        }, this.waitDurationInOpenState).unref();
         this.onCircuitOpen(metrics);
       }
     }
