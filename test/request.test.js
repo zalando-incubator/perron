@@ -200,7 +200,7 @@ describe("request", () => {
     const host = "example.org";
 
     request({ timeout, host })
-      .catch(error => {
+      .then(fail, error => {
         assert.strictEqual(error.message, "socket timeout");
         sinon.assert.calledWith(socketStub.setTimeout.firstCall, timeout);
         sinon.assert.calledOnce(socketStub.setTimeout);
@@ -219,7 +219,7 @@ describe("request", () => {
     const host = "example.org";
 
     request({ readTimeout, host })
-      .catch(error => {
+      .then(fail, error => {
         assert.strictEqual(error.message, "read timeout");
         sinon.assert.calledWith(requestStub.setTimeout.firstCall, readTimeout);
         sinon.assert.calledOnce(requestStub.setTimeout);
