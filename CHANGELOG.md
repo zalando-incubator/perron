@@ -1,7 +1,7 @@
 ## 0.10.0
 
-* Deprecated `dropRequestAfter` in favor of more precise `readTimeout`
-and `timeout` options.
+* Added `readTimeout` options to be able to timeout when a socket is
+idle for a certain period of time.
 
 ## 0.9.1
 
