@@ -33,7 +33,6 @@ export interface ServiceClientRequestOptions extends RequestOptions {
   pathname: string;
   query?: object;
   timing?: boolean;
-  /** @deprecated Since 0.10.0 */
   dropRequestAfter?: number;
   body?: any;
   headers?: OutgoingHttpHeaders;
