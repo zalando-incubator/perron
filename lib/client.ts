@@ -1,6 +1,7 @@
 import {
   CircuitBreaker,
   CircuitBreakerOptions,
+  Metrics as CircuitBreakerMetrics,
   CircuitBreakerPublicApi
 } from "./circuit-breaker";
 import * as retry from "retry";
@@ -21,6 +22,7 @@ import {
 export {
   CircuitBreaker,
   CircuitBreakerOptions,
+  CircuitBreakerMetrics,
   CircuitBreakerPublicApi,
   ServiceClientResponse,
   ServiceClientRequestOptions
