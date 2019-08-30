@@ -284,6 +284,10 @@ By default Perron will try to parse JSON body if the `content-type` header is no
 it is specified as `application/json`. If you wish to disable this behavior you can use
 `autoParseJson: false` option when constructing `ServiceClient` object.
 
+### Opentracing
+
+Perron accepts a Span like object where it will log the network and request related events.
+
 ## License
 
 The MIT License
