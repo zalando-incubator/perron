@@ -1,4 +1,5 @@
 Copyright for portions of circuit breaker code are held by Yammer Inc.
+Copyright for portion of the retry related code are held by Tim Koschützki (tim@debuggable.com) and Felix Geisendörfer (felix@debuggable.com)
 All other copyright for Perron are held by Zalando.
 
 The MIT License
