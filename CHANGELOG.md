@@ -1,5 +1,10 @@
-## 0.10.0
+## 0.11.0
 
+* Added `span` option where the tcp events will be logged. The interface matches the opentracing span interface.
+* Improved retries performance and memory usage.
+
+## 0.10.0
+                                  
 * Added `readTimeout` options to be able to timeout when a socket is
 idle for a certain period of time.
 
