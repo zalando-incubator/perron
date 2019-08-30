@@ -38,13 +38,8 @@ function createTimeout(
 }
 export interface OperationOptions extends CreateTimeoutOptions {
   /**
-   * Whether to [unref](https://nodejs.org/api/timers.html#timers_unref) the setTimeout's.
-   * @default false
-   */
-  unref?: boolean;
-  /**
    * The maximum amount of times to retry the operation.
-   * @default 10
+   * @default 0
    */
   retries: number;
 }
@@ -57,17 +52,17 @@ interface CreateTimeoutOptions {
   factor: number;
   /**
    * The number of milliseconds before starting the first retry.
-   * @default 1000
+   * @default 200
    */
   minTimeout: number;
   /**
    * The maximum number of milliseconds between two retries.
-   * @default Infinity
+   * @default 400
    */
   maxTimeout: number;
   /**
    * Randomizes the timeouts by multiplying a factor between 1-2.
-   * @default false
+   * @default true
    */
   randomize: boolean;
 }
