@@ -17,6 +17,23 @@ const getInterval = (time: [number, number]): number => {
   return Math.round(diff[0] * 1000 + diff[1] / 1000000);
 };
 
+export const enum EventSource {
+  HTTP_RESPONSE = "http_response",
+  HTTP_REQUEST = "http_request",
+  HTTP_RESPONSE_BODY_STREAM = "http_response_body_stream",
+  SOCKET = "socket"
+}
+
+export const enum EventName {
+  START = "start",
+  END = "end",
+  DNS = "dns",
+  TLS = "tls",
+  TIMEOUT = "timeout",
+  ERROR = "error",
+  BYTES = "bytes"
+}
+
 /**
  * The NodeJS typescript definitions has OutgoingHttpHeaders
  * with `undefined` as one of the possible values, but NodeJS
@@ -27,6 +44,10 @@ const getInterval = (time: [number, number]): number => {
  */
 export interface OutgoingHttpHeaders {
   [header: string]: number | string | string[];
+}
+
+interface Span {
+  log(keyValuePairs: { [key: string]: any }, timestamp?: number): this;
 }
 
 export interface ServiceClientRequestOptions extends RequestOptions {
@@ -45,6 +66,10 @@ export interface ServiceClientRequestOptions extends RequestOptions {
    * and there is no activity on that socket
    */
   readTimeout?: number;
+  /**
+   * Opentracing like span interface to log events
+   */
+  span?: Span;
 }
 
 export class ServiceClientResponse {
@@ -148,6 +173,14 @@ export const request = (
     ...options
   };
 
+  function logEvent(source: EventSource, name: EventName, value?: any) {
+    if (options.span != null) {
+      options.span.log({
+        [source]: value != null ? { name, value } : name
+      });
+    }
+  }
+
   if ("pathname" in options && !("path" in options)) {
     if ("query" in options) {
       let query = querystring.stringify(options.query);
@@ -182,34 +215,45 @@ export const request = (
 
     const requestObject = httpRequestFn(options);
     requestObject.setTimeout(readTimeout, () => {
+      logEvent(EventSource.HTTP_REQUEST, EventName.TIMEOUT);
       requestObject.socket.destroy();
       reject(new ReadTimeoutError(options));
     });
 
-    requestObject.once("error", err => reject(new NetworkError(err, options)));
+    requestObject.once("error", err => {
+      logEvent(EventSource.HTTP_REQUEST, EventName.ERROR, err.message);
+      reject(new NetworkError(err, options));
+    });
 
     // Fires once the socket is assigned to a request
     requestObject.once("socket", (socket: Socket) => {
+      logEvent(EventSource.SOCKET, EventName.START);
       if (options.timing) {
         timings.socket = getInterval(startTime);
       }
       if (socket.connecting) {
         socket.setTimeout(connectionTimeout, () => {
+          logEvent(EventSource.SOCKET, EventName.TIMEOUT);
           // socket should be manually cleaned up
           socket.destroy();
           reject(new ConnectionTimeoutError(options));
         });
-        if (options.timing) {
-          socket.once("lookup", () => {
+        socket.once("lookup", () => {
+          logEvent(EventSource.SOCKET, EventName.DNS);
+          if (options.timing) {
             timings.lookup = getInterval(startTime);
-          });
-        }
+          }
+        });
         // connect event would kick in only for new socket connections
         // and not for connections that are kept alive
         socket.once("connect", () => {
+          logEvent(EventSource.SOCKET, EventName.END);
           if (options.timing) {
             timings.connect = getInterval(startTime);
           }
+        });
+        socket.once("secureConnect", () => {
+          logEvent(EventSource.HTTP_REQUEST, EventName.TLS);
         });
       } else {
         if (options.timing) {
@@ -220,6 +264,7 @@ export const request = (
     });
 
     requestObject.on("response", (response: IncomingMessage) => {
+      logEvent(EventSource.HTTP_RESPONSE, EventName.START);
       if (options.timing) {
         timings.response = getInterval(startTime);
       }
@@ -229,7 +274,10 @@ export const request = (
 
       const encoding = headers && headers["content-encoding"];
       if (encoding === "gzip" || encoding === "deflate") {
-        response.on("error", err => reject(new NetworkError(err, options)));
+        response.on("error", err => {
+          logEvent(EventSource.HTTP_RESPONSE, EventName.ERROR, err.message);
+          reject(new NetworkError(err, options));
+        });
         bodyStream = response.pipe(zlib.createUnzip());
       } else {
         bodyStream = response;
@@ -238,14 +286,31 @@ export const request = (
       let chunks: Buffer[] = [];
       let bufferLength = 0;
 
-      bodyStream.on("error", err => reject(new NetworkError(err, options)));
+      bodyStream.on("error", err => {
+        logEvent(
+          EventSource.HTTP_RESPONSE_BODY_STREAM,
+          EventName.ERROR,
+          err.message
+        );
+        reject(new NetworkError(err, options));
+      });
 
       bodyStream.on("data", data => {
+        logEvent(
+          EventSource.HTTP_RESPONSE_BODY_STREAM,
+          EventName.BYTES,
+          data.length
+        );
         bufferLength += data.length;
         chunks.push(data as Buffer);
       });
 
       bodyStream.on("end", () => {
+        logEvent(
+          EventSource.HTTP_RESPONSE_BODY_STREAM,
+          EventName.END,
+          bufferLength
+        );
         hasRequestEnded = true;
         const body = Buffer.concat(chunks, bufferLength).toString("utf8");
 
@@ -266,6 +331,7 @@ export const request = (
           serviceClientResponse.timingPhases = makeTimingPhases(timings);
         }
         resolve(serviceClientResponse);
+        logEvent(EventSource.HTTP_RESPONSE, EventName.END);
       });
     });
 
@@ -273,7 +339,9 @@ export const request = (
       setTimeout(() => {
         if (!hasRequestEnded) {
           requestObject.abort();
-          reject(new UserTimeoutError(options, timings));
+          const err = new UserTimeoutError(options, timings);
+          logEvent(EventSource.HTTP_REQUEST, EventName.ERROR, err.message);
+          reject(err);
         }
       }, options.dropRequestAfter);
     }
@@ -281,6 +349,7 @@ export const request = (
     if (options.body) {
       requestObject.write(options.body);
     }
+    logEvent(EventSource.HTTP_REQUEST, EventName.START);
     requestObject.end();
   });
 };

@@ -405,4 +405,22 @@ describe("request", () => {
       });
     });
   });
+
+  it("should log in the span object", () => {
+    const logSpy = sinon.spy();
+    request({ span: { log: logSpy } });
+    const socketStub = new SocketStub(true);
+    requestStub.emit("socket", socketStub);
+    socketStub.emit("lookup");
+    socketStub.emit("connect");
+    const responseStub = new ResponseStub();
+    requestStub.emit("response", responseStub);
+    responseStub.emit("data", Buffer.from("hello"));
+    sinon.assert.calledWith(logSpy, sinon.match.has("socket"));
+    sinon.assert.calledWith(logSpy, sinon.match.has("http_response"));
+    sinon.assert.calledWith(
+      logSpy,
+      sinon.match.has("http_response_body_stream")
+    );
+  });
 });
