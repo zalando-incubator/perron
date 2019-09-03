@@ -1,3 +1,7 @@
+## 0.11.1
+
+* Added support for measuring TLS timings.
+
 ## 0.11.0
 
 * Added `span` option where the tcp events will be logged. The interface matches the opentracing span interface.
