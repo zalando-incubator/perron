@@ -4,7 +4,7 @@ import {
   Metrics as CircuitBreakerMetrics,
   CircuitBreakerPublicApi
 } from "./circuit-breaker";
-import * as retry from "retry";
+import { operation } from "./retry";
 import * as url from "url";
 import {
   ConnectionTimeoutError,
@@ -178,6 +178,7 @@ export abstract class ServiceClientError extends Error {
    * @deprecated since 0.9.0
    */
   public type: string;
+
   protected constructor(
     originalError: Error,
     type: string,
@@ -235,6 +236,7 @@ export class ResponseFilterError extends ServiceClientError {
 
 export class RequestNetworkError extends ServiceClientError {
   public requestOptions: ServiceClientRequestOptions;
+
   constructor(originalError: RequestError, name: string) {
     super(originalError, ServiceClient.REQUEST_FAILED, undefined, name);
     this.requestOptions = originalError.requestOptions;
@@ -243,6 +245,7 @@ export class RequestNetworkError extends ServiceClientError {
 
 export class RequestConnectionTimeoutError extends ServiceClientError {
   public requestOptions: ServiceClientRequestOptions;
+
   constructor(originalError: RequestError, name: string) {
     super(originalError, ServiceClient.REQUEST_FAILED, undefined, name);
     this.requestOptions = originalError.requestOptions;
@@ -251,6 +254,7 @@ export class RequestConnectionTimeoutError extends ServiceClientError {
 
 export class RequestReadTimeoutError extends ServiceClientError {
   public requestOptions: ServiceClientRequestOptions;
+
   constructor(originalError: RequestError, name: string) {
     super(originalError, ServiceClient.REQUEST_FAILED, undefined, name);
     this.requestOptions = originalError.requestOptions;
@@ -259,6 +263,7 @@ export class RequestReadTimeoutError extends ServiceClientError {
 
 export class RequestUserTimeoutError extends ServiceClientError {
   public requestOptions: ServiceClientRequestOptions;
+
   constructor(originalError: RequestError, name: string) {
     super(originalError, ServiceClient.REQUEST_FAILED, undefined, name);
     this.requestOptions = originalError.requestOptions;
@@ -597,13 +602,10 @@ export class ServiceClient {
       randomize
     };
 
-    const operation = retry.operation(opts);
     const retryErrors: ServiceClientError[] = [];
-
-    const breaker = this.getCircuitBreaker(params);
-
-    return new Promise<ServiceClientResponse>((resolve, reject) =>
-      operation.attempt((currentAttempt: number) => {
+    return new Promise<ServiceClientResponse>((resolve, reject) => {
+      const breaker = this.getCircuitBreaker(params);
+      const retryOperation = operation(opts, (currentAttempt: number) => {
         breaker.run(
           (success: () => void, failure: () => void) => {
             return requestWithFilters(
@@ -626,7 +628,7 @@ export class ServiceClient {
                   );
                   return;
                 }
-                if (!operation.retry(error)) {
+                if (!retryOperation.retry()) {
                   // Wrapping error when user does not want retries would result
                   // in bad developer experience where you always have to unwrap it
                   // knowing there is only one error inside, so we do not do that.
@@ -650,8 +652,9 @@ export class ServiceClient {
             reject(new CircuitOpenError(new Error(), this.name));
           }
         );
-      })
-    ).catch((error: unknown) => {
+      });
+      retryOperation.attempt();
+    }).catch((error: unknown) => {
       const rawError =
         error instanceof Error ? error : new Error(String(error));
       const wrappedError =
@@ -663,6 +666,7 @@ export class ServiceClient {
     });
   }
 }
+
 Object.freeze(ServiceClient);
 
 export default ServiceClient;
