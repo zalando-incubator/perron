@@ -318,9 +318,11 @@ describe("request", () => {
     clock.tick(30);
     socketStub.emit("connect");
     clock.tick(40);
+    socketStub.emit("secureConnect");
+    clock.tick(50);
     const responseStub = new ResponseStub();
     requestStub.emit("response", responseStub);
-    clock.tick(50);
+    clock.tick(60);
     responseStub.emit("data", Buffer.from("hello"));
     responseStub.emit("end");
     return promise.then(response => {
@@ -328,16 +330,18 @@ describe("request", () => {
         socket: 10,
         lookup: 30,
         connect: 60,
-        response: 100,
-        end: 150
+        secureConnect: 100,
+        response: 150,
+        end: 210
       });
       assert.deepEqual(response.timingPhases, {
         wait: 10,
         dns: 20,
         tcp: 30,
-        firstByte: 40,
-        download: 50,
-        total: 150
+        tls: 40,
+        firstByte: 50,
+        download: 60,
+        total: 210
       });
     });
   });
@@ -358,6 +362,7 @@ describe("request", () => {
         socket: 10,
         lookup: 10,
         connect: 10,
+        secureConnect: 10,
         response: 30,
         end: 60
       });
@@ -365,6 +370,7 @@ describe("request", () => {
         wait: 10,
         dns: 0,
         tcp: 0,
+        tls: 0,
         firstByte: 20,
         download: 30,
         total: 60
@@ -392,6 +398,7 @@ describe("request", () => {
         lookup: 10,
         socket: 10,
         connect: 10,
+        secureConnect: 10,
         response: 100,
         end: undefined
       });
@@ -399,6 +406,7 @@ describe("request", () => {
         wait: 10,
         dns: 0,
         tcp: 0,
+        tls: 0,
         firstByte: 90,
         download: undefined,
         total: undefined

@@ -90,6 +90,7 @@ export interface Timings {
   lookup?: number;
   socket?: number;
   connect?: number;
+  secureConnect?: number;
   response?: number;
   end?: number;
 }
@@ -97,6 +98,7 @@ export interface TimingPhases {
   wait?: number;
   dns?: number;
   tcp?: number;
+  tls?: number;
   firstByte?: number;
   download?: number;
   total?: number;
@@ -159,7 +161,8 @@ const makeTimingPhases = (timings: Timings): TimingPhases => {
     wait: timings.socket,
     dns: subtract(timings.lookup, timings.socket),
     tcp: subtract(timings.connect, timings.lookup),
-    firstByte: subtract(timings.response, timings.connect),
+    tls: subtract(timings.secureConnect, timings.connect),
+    firstByte: subtract(timings.response, timings.secureConnect),
     download: subtract(timings.end, timings.response),
     total: timings.end
   };
@@ -208,6 +211,7 @@ export const request = (
         lookup: undefined,
         socket: undefined,
         connect: undefined,
+        secureConnect: undefined,
         response: undefined,
         end: undefined
       };
@@ -254,11 +258,15 @@ export const request = (
         });
         socket.once("secureConnect", () => {
           logEvent(EventSource.HTTP_REQUEST, EventName.TLS);
+          if (options.timing) {
+            timings.secureConnect = getInterval(startTime);
+          }
         });
       } else {
         if (options.timing) {
           timings.lookup = timings.socket;
           timings.connect = timings.socket;
+          timings.secureConnect = timings.socket;
         }
       }
     });

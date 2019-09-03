@@ -50,16 +50,18 @@ describe("ServiceClient", () => {
     socket: 1,
     lookup: 2,
     connect: 3,
-    response: 4,
-    end: 5
+    secureConnect: 4,
+    response: 5,
+    end: 6
   };
   const timingPhases = {
     wait: 1,
     dns: 1,
     tcp: 1,
+    tls: 1,
     firstByte: 1,
     download: 1,
-    total: 5
+    total: 6
   };
 
   beforeEach(() => {
