@@ -578,6 +578,10 @@ export class ServiceClient {
 
     params.hostname = this.options.hostname;
     params.port = params.port || (params.protocol === "https:" ? 443 : 80);
+    params.timing =
+      params.timing !== undefined
+        ? params.timing
+        : this.options.timing || false;
 
     params.headers = {
       accept: "application/json",
