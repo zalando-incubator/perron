@@ -1,5 +1,6 @@
 "use strict";
 
+const nock = require("nock");
 const util = require("util");
 const assert = require("assert");
 const proxyquire = require("proxyquire").noCallThru();
@@ -11,7 +12,7 @@ const fail = result =>
     `expected promise to be rejected, got resolved with ${util.inspect(result)}`
   );
 
-describe("ServiceClient", () => {
+describe("ServiceClient with stub request", () => {
   /**
    * @type ServiceClientOptions
    */
@@ -466,7 +467,8 @@ describe("ServiceClient", () => {
         accept: "application/json"
       },
       pathname: "/",
-      timeout: 2000
+      timeout: 2000,
+      timing: false
     };
     it("should pass reasonable request params by default", () => {
       const client = new ServiceClient(clientOptions);
@@ -560,7 +562,8 @@ describe("ServiceClient", () => {
             protocol: "http:",
             query: {
               param: "42"
-            }
+            },
+            timing: false
           })
         );
       });
@@ -763,6 +766,50 @@ describe("ServiceClient", () => {
     return client.request().then(() => {
       assert(breaker.run.calledOnce);
       assert(breakerFactory.calledWithMatch(clientOptions));
+    });
+  });
+});
+
+describe("ServiceClient with nock response", () => {
+  const { ServiceClient } = require("../dist/client");
+  /**
+   * @type ServiceClientOptions
+   */
+  let clientOptions;
+  beforeEach(() => {
+    clientOptions = {
+      hostname: "catwatch.opensource.zalan.do"
+    };
+  });
+  describe("metrics", async () => {
+    it("should return the timing metrics when timing enabled in client", async () => {
+      nock("https://catwatch.opensource.zalan.do")
+        .get("/")
+        .reply(200);
+      const optsWithTimingEnabled = Object.assign({}, clientOptions, {
+        timing: true
+      });
+      const client = new ServiceClient(optsWithTimingEnabled);
+
+      const response = await client.request();
+
+      assert(response.timings != null);
+      assert(response.timingPhases != null);
+    });
+
+    it("should not return the timing metrics when timing disabled in client", async () => {
+      nock("https://catwatch.opensource.zalan.do")
+        .get("/")
+        .reply(200);
+      const optsWithTimingEnabled = Object.assign({}, clientOptions, {
+        timing: false
+      });
+      const client = new ServiceClient(optsWithTimingEnabled);
+
+      const response = await client.request();
+
+      assert(response.timings == null);
+      assert(response.timingPhases == null);
     });
   });
 });
