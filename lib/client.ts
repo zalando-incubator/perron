@@ -581,7 +581,7 @@ export class ServiceClient {
     params.timing =
       params.timing !== undefined
         ? params.timing
-        : this.options.timing || false;
+        : this.options.timing;
 
     params.headers = {
       accept: "application/json",
