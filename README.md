@@ -136,6 +136,27 @@ const catWatch = new ServiceClient({
 });
 ```
 
+Optionally the `onCircuitOpen` and `onCircuitClose` functions can be passed to the circuitBreaker object in order to track the state of the circuit breaker via metrics or logging:
+
+```js
+const catWatch = new ServiceClient({
+    hostname: 'catwatch.opensource.zalan.do',
+    circuitBreaker: {
+        windowDuration: 10000,
+        numBuckets: 10,
+        timeoutDuration: 2000,
+        errorThreshold: 50,
+        volumeThreshold: 10,
+        onCircuitOpen: (metrics) => {
+          console.log('Circuit breaker open', metrics);
+        },
+        onCircuitClose: (metrics) => {
+          console.log('Circuit breaker closed', metrics);
+        }
+    }
+});
+```
+
 Circuit breaker will count all errors, including the ones coming from filters, so it's generally better to do pre- and post- validation of your request outside of filter chain.
 
 If this is not the desired behavior, or you are already using a circuit breaker, it's always possible to disable the built-in one:
