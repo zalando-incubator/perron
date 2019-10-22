@@ -32,7 +32,7 @@ describe("Client - request integration tests", () => {
       const clientOptions = {
         hostname: "catwatch.opensource.zalan.do",
         defaultRequestOptions: {
-          dropRequestAfter: 200
+          dropRequestAfter: 400
         },
         retryOptions: {
           retries: 2,
@@ -43,7 +43,7 @@ describe("Client - request integration tests", () => {
 
       nock(/catwatch\.opensource\.zalan\.do/)
         .get("/")
-        .delay(300)
+        .delay(250)
         .reply(200, `{"foo":"bar"}`)
         .get("/")
         .reply(200, `{"foo":"bar"}`);
@@ -51,8 +51,14 @@ describe("Client - request integration tests", () => {
       const client = new ServiceClient(clientOptions);
       const responsePending = client.request();
 
-      await wait(150);
-      assert.equal(retrySpy.callCount, 1);
+      const index = 0;
+      responsePending.then(() => {
+        assert.equal(index, 0);
+        index++;
+      });
+
+      await wait(250);
+      assert.equal(retrySpy.callCount, 2);
 
       return responsePending;
     });
