@@ -51,7 +51,7 @@ describe("Client - request integration tests", () => {
       const client = new ServiceClient(clientOptions);
       const responsePending = client.request();
 
-      const index = 0;
+      let index = 0;
       responsePending.then(() => {
         assert.equal(index, 0);
         index++;

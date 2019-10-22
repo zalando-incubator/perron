@@ -5,6 +5,7 @@ import {
   CircuitBreakerPublicApi
 } from "./circuit-breaker";
 import { operation } from "./retry";
+import { performance } from "perf_hooks";
 import * as url from "url";
 import {
   ConnectionTimeoutError,
@@ -97,6 +98,7 @@ export class ServiceClientOptions {
   };
   public circuitBreaker?: false | CircuitBreakerOptions | CircuitBreakerFactory;
   public defaultRequestOptions?: Partial<ServiceClientRequestOptions>;
+  public dropAllRequestsAfter?: number;
 }
 
 /**
@@ -121,6 +123,7 @@ class ServiceClientStrictOptions {
     ) => void;
   };
   public defaultRequestOptions: ServiceClientRequestOptions;
+  public dropAllRequestsAfter: number;
 
   constructor(options: ServiceClientOptions) {
     if (!options.hostname) {
@@ -163,6 +166,8 @@ class ServiceClientStrictOptions {
       timeout: 2000,
       ...options.defaultRequestOptions
     };
+
+    this.dropAllRequestsAfter = options.dropAllRequestsAfter || 0;
   }
 }
 
@@ -604,10 +609,19 @@ export class ServiceClient {
 
     const retryErrors: ServiceClientError[] = [];
     return new Promise<ServiceClientResponse>((resolve, reject) => {
+      const timerInitial = performance.now();
       const breaker = this.getCircuitBreaker(params);
       const retryOperation = operation(opts, (currentAttempt: number) => {
         breaker.run(
           (success: () => void, failure: () => void) => {
+            if (this.options.dropAllRequestsAfter) {
+              const timerLeft =
+                this.options.dropAllRequestsAfter -
+                (performance.now() - timerInitial);
+              params.dropRequestAfter = params.dropRequestAfter
+                ? Math.min(params.dropRequestAfter, timerLeft)
+                : timerLeft;
+            }
             return requestWithFilters(
               this,
               params,
