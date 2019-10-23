@@ -32,21 +32,63 @@ describe("Client - request integration tests", () => {
       const clientOptions = {
         hostname: "catwatch.opensource.zalan.do",
         defaultRequestOptions: {
-          dropRequestAfter: 400
+          dropRequestAfter: 800
         },
         retryOptions: {
           retries: 2,
           retryAfter: 100,
-          onRetry: retrySpy
+          onRetry: retrySpy,
+          minTimeout: 0,
+          maxTimeout: 0
         }
       };
 
       nock(/catwatch\.opensource\.zalan\.do/)
         .get("/")
         .delay(250)
+        .reply(500, `{"foo":"bar"}`)
+        .get("/")
+        .delay(150)
+        .reply(500, `{"foo":"bar1"}`)
+        .get("/")
+        .reply(200, `{"foo":"bar2"}`);
+
+      const client = new ServiceClient(clientOptions);
+      const responsePending = client.request();
+
+      responsePending.then(res => {
+        assert.equal(JSON.stringify(res.body), `{"foo":"bar2"}`);
+      });
+
+      await wait(300);
+
+      assert.equal(retrySpy.callCount, 2);
+
+      return responsePending;
+    });
+
+    it("Should start retrying after retryAfter timer", async () => {
+      const retrySpy = sinon.spy();
+      const clientOptions = {
+        hostname: "catwatch.opensource.zalan.do",
+        defaultRequestOptions: {
+          dropRequestAfter: 800
+        },
+        retryOptions: {
+          retries: 2,
+          retryAfter: 100,
+          onRetry: retrySpy,
+          minTimeout: 0,
+          maxTimeout: 0
+        }
+      };
+
+      nock(/catwatch\.opensource\.zalan\.do/)
+        .get("/")
+        .delay(150)
         .reply(200, `{"foo":"bar"}`)
         .get("/")
-        .reply(200, `{"foo":"bar"}`);
+        .reply(200, `{"foo":"bar1"}`);
 
       const client = new ServiceClient(clientOptions);
       const responsePending = client.request();
@@ -57,8 +99,12 @@ describe("Client - request integration tests", () => {
         index++;
       });
 
-      await wait(250);
-      assert.equal(retrySpy.callCount, 2);
+      await wait(300);
+
+      const flushPromises = () => new Promise(resolve => setImmediate(resolve));
+      await flushPromises();
+
+      assert.equal(retrySpy.callCount, 1);
 
       return responsePending;
     });

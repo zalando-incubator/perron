@@ -30,10 +30,11 @@ describe("Retry", function() {
   it("should retry a failed operation", done => {
     const error = new Error("some error");
     let attempts = 0;
-    const op = operation({ ...baseOptions, retries: 3 }, currentAttempt => {
+    const op = operation({ ...baseOptions, retries: 3 }, () => {
       attempts++;
-      assert.equal(currentAttempt, attempts);
-      if (op.retry(error)) {
+      const currentAttempt = op.retry(error);
+      if (currentAttempt) {
+        assert.equal(currentAttempt, attempts);
         clock.tick(baseOptions.maxTimeout);
         return;
       }

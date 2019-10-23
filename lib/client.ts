@@ -85,6 +85,7 @@ export class ServiceClientOptions {
   public autoParseJson?: boolean;
   public retryOptions?: {
     retries?: number;
+    retryAfter?: number;
     factor?: number;
     minTimeout?: number;
     maxTimeout?: number;
@@ -111,6 +112,7 @@ class ServiceClientStrictOptions {
   public autoParseJson: boolean;
   public retryOptions: {
     retries: number;
+    retryAfter: number;
     factor: number;
     minTimeout: number;
     maxTimeout: number;
@@ -143,6 +145,7 @@ class ServiceClientStrictOptions {
       minTimeout: 200,
       randomize: true,
       retries: 0,
+      retryAfter: 0,
       shouldRetry() {
         return true;
       },
@@ -611,7 +614,7 @@ export class ServiceClient {
     return new Promise<ServiceClientResponse>((resolve, reject) => {
       const timerInitial = performance.now();
       const breaker = this.getCircuitBreaker(params);
-      const retryOperation = operation(opts, (currentAttempt: number) => {
+      const retryOperation = operation(opts, () => {
         breaker.run(
           (success: () => void, failure: () => void) => {
             if (this.options.dropAllRequestsAfter) {
@@ -622,6 +625,7 @@ export class ServiceClient {
                 ? Math.min(params.dropRequestAfter, timerLeft)
                 : timerLeft;
             }
+
             return requestWithFilters(
               this,
               params,
@@ -629,11 +633,18 @@ export class ServiceClient {
               this.options.autoParseJson
             )
               .then((result: ServiceClientResponse) => {
+                if (retryOperation.isResolved()) {
+                  return;
+                }
                 success();
                 result.retryErrors = retryErrors;
+                retryOperation.resolved();
                 resolve(result);
               })
               .catch((error: ServiceClientError) => {
+                if (retryOperation.isResolved()) {
+                  return;
+                }
                 retryErrors.push(error);
                 failure();
                 if (!shouldRetry(error, params)) {
@@ -642,7 +653,8 @@ export class ServiceClient {
                   );
                   return;
                 }
-                if (!retryOperation.retry()) {
+                const currentAttempt = retryOperation.retry();
+                if (!currentAttempt) {
                   // Wrapping error when user does not want retries would result
                   // in bad developer experience where you always have to unwrap it
                   // knowing there is only one error inside, so we do not do that.
@@ -668,6 +680,32 @@ export class ServiceClient {
         );
       });
       retryOperation.attempt();
+
+      if (this.options.retryOptions.retryAfter) {
+        (async () => {
+          let currentAttempt: boolean | number = 1;
+          while (
+            currentAttempt &&
+            currentAttempt <= this.options.retryOptions.retries
+          ) {
+            currentAttempt = await new Promise(resolve => {
+              setTimeout(() => {
+                if (!retryOperation.isResolved()) {
+                  const currentAttempt = retryOperation.retry();
+                  if (!currentAttempt) {
+                    resolve(currentAttempt);
+                    return;
+                  }
+                  onRetry(currentAttempt + 1, undefined, params);
+                  resolve(currentAttempt + 1);
+                } else {
+                  resolve(false);
+                }
+              }, this.options.retryOptions.retryAfter);
+            });
+          }
+        })();
+      }
     }).catch((error: unknown) => {
       const rawError =
         error instanceof Error ? error : new Error(String(error));
