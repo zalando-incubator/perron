@@ -1,4 +1,7 @@
-export function operation(options: OperationOptions, fn: () => void) {
+export function operation(
+  options: OperationOptions,
+  fn: (aggressiveRetry: boolean) => void
+) {
   return new RetryOperation(timeouts(options), fn);
 }
 
@@ -66,10 +69,10 @@ interface CreateTimeoutOptions {
 
 class RetryOperation {
   private readonly _timeouts: number[];
-  private readonly _fn: () => void;
+  private readonly _fn: (aggressiveRetry: boolean) => void;
   private _resolved: boolean;
   private _attempts: number;
-  constructor(timeouts: number[], fn: () => void) {
+  constructor(timeouts: number[], fn: (aggressiveRetry: boolean) => void) {
     this._timeouts = timeouts;
     this._fn = fn;
     this._resolved = false;
@@ -83,14 +86,14 @@ class RetryOperation {
     let timeout = immediate ? 0 : this._timeouts[this._attempts - 1];
     setTimeout(() => {
       this._attempts++;
-      this._fn();
+      this._fn(immediate);
     }, timeout);
 
     return this._attempts;
   }
 
   attempt() {
-    this._fn();
+    this._fn(false);
   }
 
   resolved() {

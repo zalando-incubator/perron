@@ -12,23 +12,66 @@ describe("Client - request integration tests", () => {
     it("Should drop all requests after dropAllRequestsAfter timer", () => {
       const clientOptions = {
         hostname: "catwatch.opensource.zalan.do",
-        dropAllRequestsAfter: 50
+        dropAllRequestsAfter: 10
       };
       const client = new ServiceClient(clientOptions);
 
       nock(/catwatch\.opensource\.zalan\.do/)
         .get("/")
-        .delay(100)
+        .delay(20)
         .reply(200, `{"foo":"bar"}`);
 
       return assert.rejects(client.request(), RequestUserTimeoutError);
+    });
+
+    it("Should drop all requests after dropAllRequestsAfter timer including retries", async () => {
+      const retrySpy = sinon.spy();
+      const successSpy = sinon.spy();
+      const failureSpy = sinon.spy();
+      const clientOptions = {
+        hostname: "catwatch.opensource.zalan.do",
+        dropAllRequestsAfter: 40,
+        retryOptions: {
+          retries: 2,
+          retryAfter: 10,
+          onRetry: retrySpy
+        }
+      };
+      const client = new ServiceClient(clientOptions);
+      const responsePending = client
+        .request()
+        .then(() => {
+          successSpy();
+        })
+        .catch(err => {
+          failureSpy();
+          assert(err instanceof ServiceClient.Error);
+          assert(err instanceof RequestUserTimeoutError);
+        });
+
+      nock(/catwatch\.opensource\.zalan\.do/)
+        .get("/")
+        .delay(50)
+        .reply(200, `{"foo":"bar"}`)
+        .get("/")
+        .delay(50)
+        .reply(200, `{"foo":"bar"}`)
+        .get("/")
+        .delay(50)
+        .reply(200, `{"foo":"bar"}`);
+
+      await wait(50);
+
+      sinon.assert.callCount(retrySpy, 2);
+      sinon.assert.notCalled(successSpy);
+      sinon.assert.callCount(failureSpy, 1);
+      return responsePending;
     });
   });
 
   describe("retryAfter option", () => {
     it("Should start retrying after retryAfter timer", async () => {
       const retrySpy = sinon.spy();
-
       const clientOptions = {
         hostname: "catwatch.opensource.zalan.do",
         defaultRequestOptions: {
@@ -54,11 +97,11 @@ describe("Client - request integration tests", () => {
       const client = new ServiceClient(clientOptions);
       const responsePending = client.request();
 
+      await wait(40);
+
       responsePending.then(res => {
         assert.equal(JSON.stringify(res.body), `{"foo":"bar2"}`);
       });
-
-      await wait(40);
 
       assert.equal(retrySpy.callCount, 2);
       return responsePending;

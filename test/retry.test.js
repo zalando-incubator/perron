@@ -29,21 +29,28 @@ describe("Retry", function() {
   });
 
   it("should retry a failed operation", done => {
-    const error = new Error("some error");
     let attempts = 0;
     const op = operation({ ...baseOptions, retries: 3 }, () => {
       attempts++;
-      const currentAttempt = op.retry(error);
+      const currentAttempt = op.retry();
       if (currentAttempt) {
         assert.equal(currentAttempt, attempts);
         clock.tick(baseOptions.maxTimeout);
         return;
       }
-
       assert.strictEqual(attempts, 4);
       done();
     });
     op.attempt();
+  });
+
+  it("should retry immediately an operation when retry is called with immediate=true", () => {
+    const fn = sinon.spy();
+    const op = operation(baseOptions, fn);
+    op.retry(true);
+    sinon.assert.notCalled(fn);
+    clock.tick();
+    sinon.assert.called(fn);
   });
 
   describe("timeout generation", () => {
