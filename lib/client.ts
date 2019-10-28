@@ -694,17 +694,15 @@ export class ServiceClient {
           while (currentAttempt && currentAttempt <= retries) {
             currentAttempt = await new Promise(resolve => {
               setTimeout(() => {
+                let resolveValue: boolean | number = false;
                 if (!retryOperation.isResolved()) {
                   const currentAttempt = retryOperation.retry(true);
-                  if (!currentAttempt) {
-                    resolve(currentAttempt);
-                    return;
+                  if (currentAttempt) {
+                    onRetry(currentAttempt + 1, undefined, params);
+                    resolveValue = currentAttempt + 1;
                   }
-                  onRetry(currentAttempt + 1, undefined, params);
-                  resolve(currentAttempt + 1);
-                } else {
-                  resolve(false);
                 }
+                resolve(resolveValue);
               }, retryAfter);
             });
           }
