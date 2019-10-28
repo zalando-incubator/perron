@@ -621,9 +621,14 @@ export class ServiceClient {
               const timerLeft =
                 this.options.dropAllRequestsAfter -
                 (performance.now() - timerInitial);
-              params.dropRequestAfter = params.dropRequestAfter
-                ? Math.min(params.dropRequestAfter, timerLeft)
-                : timerLeft;
+              if (params.dropRequestAfter) {
+                params.dropRequestAfter = Math.min(
+                  params.dropRequestAfter,
+                  timerLeft
+                );
+              } else {
+                params.dropRequestAfter = timerLeft;
+              }
             }
 
             return requestWithFilters(
@@ -636,9 +641,9 @@ export class ServiceClient {
                 if (retryOperation.isResolved()) {
                   return;
                 }
+                retryOperation.resolved();
                 success();
                 result.retryErrors = retryErrors;
-                retryOperation.resolved();
                 resolve(result);
               })
               .catch((error: ServiceClientError) => {
@@ -681,17 +686,16 @@ export class ServiceClient {
       });
       retryOperation.attempt();
 
-      if (this.options.retryOptions.retryAfter) {
+      const { retryAfter, retries } = this.options.retryOptions;
+
+      if (retryAfter) {
         (async () => {
           let currentAttempt: boolean | number = 1;
-          while (
-            currentAttempt &&
-            currentAttempt <= this.options.retryOptions.retries
-          ) {
+          while (currentAttempt && currentAttempt <= retries) {
             currentAttempt = await new Promise(resolve => {
               setTimeout(() => {
                 if (!retryOperation.isResolved()) {
-                  const currentAttempt = retryOperation.retry();
+                  const currentAttempt = retryOperation.retry(true);
                   if (!currentAttempt) {
                     resolve(currentAttempt);
                     return;
@@ -701,7 +705,7 @@ export class ServiceClient {
                 } else {
                   resolve(false);
                 }
-              }, this.options.retryOptions.retryAfter);
+              }, retryAfter);
             });
           }
         })();

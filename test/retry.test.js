@@ -20,6 +20,7 @@ describe("Retry", function() {
   afterEach(() => {
     clock.restore();
   });
+
   it("should attempt the operation", () => {
     const fn = sinon.spy();
     const op = operation(baseOptions, fn);
