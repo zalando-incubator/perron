@@ -47,9 +47,9 @@ describe("Retry", function() {
   it("should retry immediately an operation when retry is called with immediate=true", () => {
     const fn = sinon.spy();
     const op = operation(baseOptions, fn);
-    op.retry(true);
+    op.retry();
     sinon.assert.notCalled(fn);
-    clock.tick();
+    op.retry(true);
     sinon.assert.called(fn);
   });
 
