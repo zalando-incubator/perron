@@ -616,7 +616,7 @@ export class ServiceClient {
       const timerInitial = performance.now();
       const breaker = this.getCircuitBreaker(params);
       const cancels: (() => void)[] = [];
-      const retryOperation = operation(opts, aggressiveRetry => {
+      const retryOperation = operation(opts, scheduledRetry => {
         breaker.run(
           (success: () => void, failure: () => void) => {
             if (this.options.dropAllRequestsAfter) {
@@ -670,7 +670,7 @@ export class ServiceClient {
                   // Wrapping error when user does not want retries would result
                   // in bad developer experience where you always have to unwrap it
                   // knowing there is only one error inside, so we do not do that.
-                  if (retries === 0 || aggressiveRetry) {
+                  if (retries === 0 || scheduledRetry) {
                     reject(error);
                   } else {
                     reject(
