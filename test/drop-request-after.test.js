@@ -25,6 +25,36 @@ describe("retryAfter option", () => {
     nock.cleanAll();
   });
 
+  it("Should not retry of request is successful", async () => {
+    const successSpy = sinon.spy();
+    const failureSpy = sinon.spy();
+    const retrySpy = sinon.spy();
+    clientOptions.retryOptions.onRetry = retrySpy;
+
+    nock(/catwatch\.opensource\.zalan\.do/)
+      .get("/")
+      .delay(1)
+      .reply(200, `{"foo":"bar"}`);
+
+    const client = new ServiceClient(clientOptions);
+
+    const requestPending = client
+      .request()
+      .then(res => {
+        assert.equal(JSON.stringify(res.body), `{"foo":"bar"}`);
+        successSpy();
+      })
+      .catch(failureSpy);
+
+    await wait(20);
+
+    sinon.assert.callCount(successSpy, 1);
+    sinon.assert.notCalled(retrySpy);
+    sinon.assert.notCalled(failureSpy);
+
+    return requestPending;
+  });
+
   it("Should return retried request response if it arrives first", async () => {
     const successSpy = sinon.spy();
     const failureSpy = sinon.spy();

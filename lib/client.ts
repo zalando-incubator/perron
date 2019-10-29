@@ -594,6 +594,7 @@ export class ServiceClient {
 
     const {
       retries,
+      retryAfter,
       factor,
       minTimeout,
       maxTimeout,
@@ -614,6 +615,7 @@ export class ServiceClient {
     return new Promise<ServiceClientResponse>((resolve, reject) => {
       const timerInitial = performance.now();
       const breaker = this.getCircuitBreaker(params);
+      const cancels: (() => void)[] = [];
       const retryOperation = operation(opts, aggressiveRetry => {
         breaker.run(
           (success: () => void, failure: () => void) => {
@@ -631,6 +633,10 @@ export class ServiceClient {
               }
             }
 
+            if (retryAfter) {
+              params.registerAbortCallback = cb => cancels.push(cb);
+            }
+
             return requestWithFilters(
               this,
               params,
@@ -645,6 +651,7 @@ export class ServiceClient {
                 success();
                 result.retryErrors = retryErrors;
                 resolve(result);
+                cancels.forEach(cb => cb());
               })
               .catch((error: ServiceClientError) => {
                 if (retryOperation.isResolved()) {
@@ -686,27 +693,18 @@ export class ServiceClient {
       });
       retryOperation.attempt();
 
-      const { retryAfter, retries } = this.options.retryOptions;
-
       if (retryAfter) {
-        (async () => {
-          let currentAttempt: boolean | number = 1;
-          while (currentAttempt && currentAttempt <= retries) {
-            currentAttempt = await new Promise(resolve => {
-              setTimeout(() => {
-                let resolveValue: boolean | number = false;
-                if (!retryOperation.isResolved()) {
-                  const currentAttempt = retryOperation.retry(true);
-                  if (currentAttempt) {
-                    onRetry(currentAttempt + 1, undefined, params);
-                    resolveValue = currentAttempt + 1;
-                  }
-                }
-                resolve(resolveValue);
-              }, retryAfter);
-            });
-          }
-        })();
+        const retryAfterTimeout = () =>
+          setTimeout(() => {
+            if (!retryOperation.isResolved()) {
+              const currentAttempt = retryOperation.retry(true);
+              if (currentAttempt) {
+                onRetry(currentAttempt + 1, undefined, params);
+                retryAfterTimeout();
+              }
+            }
+          }, retryAfter);
+        retryAfterTimeout();
       }
     }).catch((error: unknown) => {
       const rawError =
