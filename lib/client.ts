@@ -615,7 +615,7 @@ export class ServiceClient {
     return new Promise<ServiceClientResponse>((resolve, reject) => {
       const timerInitial = performance.now();
       const breaker = this.getCircuitBreaker(params);
-      const cancels: (() => void)[] = [];
+      const requestsAbortCallbacks: (() => void)[] = [];
       const retryOperation = operation(opts, scheduledRetry => {
         breaker.run(
           (success: () => void, failure: () => void) => {
@@ -634,7 +634,8 @@ export class ServiceClient {
             }
 
             if (retryAfter) {
-              params.registerAbortCallback = cb => cancels.push(cb);
+              params.registerAbortCallback = cb =>
+                requestsAbortCallbacks.push(cb);
             }
 
             return requestWithFilters(
@@ -651,7 +652,10 @@ export class ServiceClient {
                 success();
                 result.retryErrors = retryErrors;
                 resolve(result);
-                cancels.forEach(cb => cb());
+                if (retryAfter) {
+                  requestsAbortCallbacks.forEach(cb => cb());
+                  requestsAbortCallbacks.length = 0;
+                }
               })
               .catch((error: ServiceClientError) => {
                 if (retryOperation.isResolved()) {
