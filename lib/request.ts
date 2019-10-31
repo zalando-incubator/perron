@@ -220,7 +220,15 @@ export const request = (
 
     const requestObject = httpRequestFn(options);
 
+    let dropRequestAfterTimeout: NodeJS.Timer;
+    if (options.dropRequestAfter) {
+      dropRequestAfterTimeout = setTimeout(() => {
+        abortCallback();
+      }, options.dropRequestAfter);
+    }
+
     function abortCallback() {
+      clearTimeout(dropRequestAfterTimeout);
       if (!hasRequestEnded) {
         requestObject.abort();
         const err = new UserTimeoutError(options, timings);
@@ -357,12 +365,6 @@ export const request = (
         logEvent(EventSource.HTTP_RESPONSE, EventName.END);
       });
     });
-
-    if (options.dropRequestAfter) {
-      setTimeout(() => {
-        abortCallback();
-      }, options.dropRequestAfter);
-    }
 
     if (options.body) {
       requestObject.write(options.body);
