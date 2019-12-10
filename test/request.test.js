@@ -308,6 +308,17 @@ describe("request", () => {
     });
   });
 
+  it("should not abort the request on request error", () => {
+    requestStub.abort = sinon.stub();
+    httpsStub.request.returns(requestStub);
+    const promise = request({ dropRequestAfter: 500 });
+    requestStub.emit("error", new Error("request failed"));
+    clock.tick(500);
+    return promise.then(fail, () => {
+      assert(requestStub.abort.notCalled);
+    });
+  });
+
   it("should record timings for non-keep-alive connection", () => {
     const promise = request({ timing: true });
     const socketStub = new SocketStub(true);
