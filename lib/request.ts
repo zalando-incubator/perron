@@ -225,6 +225,7 @@ export const request = (
     });
 
     requestObject.once("error", err => {
+      hasRequestEnded = true;
       logEvent(EventSource.HTTP_REQUEST, EventName.ERROR, err.message);
       reject(new NetworkError(err, options));
     });
