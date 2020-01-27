@@ -50,14 +50,17 @@ export interface ServiceClientRequestFilter {
    */
   request?: (
     requestOptions: ServiceClientRequestOptions
-  ) => Promise<ServiceClientResponse | ServiceClientRequestOptions>;
+  ) =>
+    | ServiceClientResponse
+    | ServiceClientRequestOptions
+    | Promise<ServiceClientResponse | ServiceClientRequestOptions>;
   /**
    * This callback is called after the response has arrived.
    * @throws {Error}
    */
   response?: (
     response: ServiceClientResponse
-  ) => Promise<ServiceClientResponse>;
+  ) => ServiceClientResponse | Promise<ServiceClientResponse>;
 }
 
 /**
