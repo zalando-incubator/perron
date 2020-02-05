@@ -1,3 +1,12 @@
+## 0.11.3
+
+* Use `timing` option from client if `timing` is not set in the request options. #91
+* Improved TypeScript definition of `ServiceClientRequestFilter`. #100
+
+## 0.11.2
+
+* Fixed an error that is thrown when `dropRequestAfter` is set and a connection error happens. #96
+
 ## 0.11.1
 
 * Added support for measuring TLS timings.
@@ -8,7 +17,7 @@
 * Improved retries performance and memory usage.
 
 ## 0.10.0
-                                  
+
 * Added `readTimeout` options to be able to timeout when a socket is
 idle for a certain period of time.
 
@@ -27,7 +36,7 @@ Added custom error classes for different error types, including ability to disti
 TypeScript type definition for request headers has been made more
 strict to avoid runtime errors caused by `undefined` headers.
 
-See [pull request](https://github.com/zalando-incubator/perron/pull/77/files) for details. 
+See [pull request](https://github.com/zalando-incubator/perron/pull/77/files) for details.
 
 ### Deprecation Notices
 
