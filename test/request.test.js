@@ -140,7 +140,7 @@ describe("request", () => {
     responseStub.emit("data", Buffer.from("bar"));
     responseStub.emit("end");
     return promise.then(response => {
-      assert.equal(true, response.body instanceof Buffer);
+      assert.deepEqual(response.body, Buffer.from("foobar"));
     });
   });
 

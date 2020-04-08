@@ -305,6 +305,11 @@ By default Perron will try to parse JSON body if the `content-type` header is no
 it is specified as `application/json`. If you wish to disable this behavior you can use
 `autoParseJson: false` option when constructing `ServiceClient` object.
 
+### UTF-8 Decoding
+By default Perron will try to decode JSON body to UTF-8 string.
+If you wish to disable this behaviour, you can use `autoDecodeUtf8: false` option
+when calling `request` method.
+
 ### Opentracing
 
 Perron accepts a Span like object where it will log the network and request related events.
