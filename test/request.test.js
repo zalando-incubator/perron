@@ -130,6 +130,20 @@ describe("request", () => {
     assert.equal(requestStub.write.firstCall.args[0], "foobar");
   });
 
+  it("should return body of type Buffer when autoDecodeUtf8 is set to false ", () => {
+    const promise = request({
+      autoDecodeUtf8: false
+    });
+    const responseStub = new ResponseStub();
+    requestStub.emit("response", responseStub);
+    responseStub.emit("data", Buffer.from("foo"));
+    responseStub.emit("data", Buffer.from("bar"));
+    responseStub.emit("end");
+    return promise.then(response => {
+      assert.equal(true, response.body instanceof Buffer);
+    });
+  });
+
   it("should resolve the promise with full response on success", () => {
     const promise = request();
     const responseStub = new ResponseStub();

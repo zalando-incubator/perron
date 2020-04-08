@@ -54,6 +54,7 @@ export interface ServiceClientRequestOptions extends RequestOptions {
   pathname: string;
   query?: object;
   timing?: boolean;
+  autoDecodeUtf8?: boolean;
   dropRequestAfter?: number;
   body?: any;
   headers?: OutgoingHttpHeaders;
@@ -173,6 +174,7 @@ export const request = (
 ): Promise<ServiceClientResponse> => {
   options = {
     protocol: "https:",
+    autoDecodeUtf8: true,
     ...options
   };
 
@@ -321,7 +323,14 @@ export const request = (
           bufferLength
         );
         hasRequestEnded = true;
-        const body = Buffer.concat(chunks, bufferLength).toString("utf8");
+
+        let body;
+        const bufferedBody: Buffer = Buffer.concat(chunks, bufferLength);
+        if (options.autoDecodeUtf8) {
+          body = bufferedBody.toString("utf8");
+        } else {
+          body = bufferedBody;
+        }
 
         // to avoid leaky behavior
         chunks = [];
