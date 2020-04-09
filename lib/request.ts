@@ -80,7 +80,7 @@ export class ServiceClientResponse {
   constructor(
     public statusCode: number,
     public headers: IncomingHttpHeaders,
-    public body: any,
+    public body: Buffer | string | object,
     public request: ServiceClientRequestOptions
   ) {
     this.retryErrors = [];
