@@ -8,6 +8,7 @@ import * as querystring from "querystring";
 import * as zlib from "zlib";
 import { ServiceClientError } from "./client";
 import { Socket } from "net";
+import { Readable } from "stream";
 
 const DEFAULT_READ_TIMEOUT = 2000;
 const DEFAULT_CONNECTION_TIMEOUT = 1000;
@@ -54,6 +55,7 @@ export interface ServiceClientRequestOptions extends RequestOptions {
   pathname: string;
   query?: object;
   timing?: boolean;
+  autoDecodeUtf8?: boolean;
   dropRequestAfter?: number;
   body?: any;
   headers?: OutgoingHttpHeaders;
@@ -80,7 +82,7 @@ export class ServiceClientResponse {
   constructor(
     public statusCode: number,
     public headers: IncomingHttpHeaders,
-    public body: any,
+    public body: Buffer | string | object,
     public request: ServiceClientRequestOptions
   ) {
     this.retryErrors = [];
@@ -157,6 +159,17 @@ export class UserTimeoutError extends RequestError {
   }
 }
 
+export class BodyStreamError extends RequestError {
+  constructor(
+    originalError: Error,
+    requestOptions: ServiceClientRequestOptions,
+    timings?: Timings
+  ) {
+    super(originalError.message, requestOptions, timings);
+    this.stack = originalError.stack;
+  }
+}
+
 const makeTimingPhases = (timings: Timings): TimingPhases => {
   return {
     wait: timings.socket,
@@ -174,6 +187,7 @@ export const request = (
 ): Promise<ServiceClientResponse> => {
   options = {
     protocol: "https:",
+    autoDecodeUtf8: true,
     ...options
   };
 
@@ -248,6 +262,7 @@ export const request = (
     });
 
     requestObject.once("error", err => {
+      hasRequestEnded = true;
       logEvent(EventSource.HTTP_REQUEST, EventName.ERROR, err.message);
       reject(new NetworkError(err, options));
     });
@@ -343,7 +358,14 @@ export const request = (
           bufferLength
         );
         hasRequestEnded = true;
-        const body = Buffer.concat(chunks, bufferLength).toString("utf8");
+
+        let body;
+        const bufferedBody: Buffer = Buffer.concat(chunks, bufferLength);
+        if (options.autoDecodeUtf8) {
+          body = bufferedBody.toString("utf8");
+        } else {
+          body = bufferedBody;
+        }
 
         // to avoid leaky behavior
         chunks = [];
@@ -366,7 +388,27 @@ export const request = (
       });
     });
 
+    if (options.dropRequestAfter) {
+      setTimeout(() => {
+        if (!hasRequestEnded) {
+          requestObject.abort();
+          const err = new UserTimeoutError(options, timings);
+          logEvent(EventSource.HTTP_REQUEST, EventName.ERROR, err.message);
+          reject(err);
+        }
+      }, options.dropRequestAfter);
+    }
+
     if (options.body) {
+      if (typeof options.body.pipe === "function") {
+        const requestBody: Readable = options.body;
+        requestBody.pipe(requestObject);
+        requestBody.on("error", err => {
+          requestObject.abort();
+          reject(new BodyStreamError(err, options, timings));
+        });
+        return;
+      }
       requestObject.write(options.body);
     }
     logEvent(EventSource.HTTP_REQUEST, EventName.START);

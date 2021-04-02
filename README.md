@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/zalando-incubator/perron.svg?branch=master)](https://travis-ci.org/zalando-incubator/perron)
+[![Build Status](https://github.com/zalando-incubator/perron/workflows/CI/badge.svg?branch=master)](https://github.com/zalando-incubator/perron/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 # Perron
@@ -132,6 +132,27 @@ const catWatch = new ServiceClient({
         timeoutDuration: 2000,
         errorThreshold: 50,
         volumeThreshold: 10
+    }
+});
+```
+
+Optionally the `onCircuitOpen` and `onCircuitClose` functions can be passed to the circuitBreaker object in order to track the state of the circuit breaker via metrics or logging:
+
+```js
+const catWatch = new ServiceClient({
+    hostname: 'catwatch.opensource.zalan.do',
+    circuitBreaker: {
+        windowDuration: 10000,
+        numBuckets: 10,
+        timeoutDuration: 2000,
+        errorThreshold: 50,
+        volumeThreshold: 10,
+        onCircuitOpen: (metrics) => {
+          console.log('Circuit breaker open', metrics);
+        },
+        onCircuitClose: (metrics) => {
+          console.log('Circuit breaker closed', metrics);
+        }
     }
 });
 ```
@@ -310,6 +331,11 @@ It is possible to reject the request both in request and response filters by thr
 By default Perron will try to parse JSON body if the `content-type` header is not set or
 it is specified as `application/json`. If you wish to disable this behavior you can use
 `autoParseJson: false` option when constructing `ServiceClient` object.
+
+### UTF-8 Decoding
+By default Perron will try to decode JSON body to UTF-8 string.
+If you wish to disable this behaviour, you can use `autoDecodeUtf8: false` option
+when calling `request` method.
 
 ### Opentracing
 

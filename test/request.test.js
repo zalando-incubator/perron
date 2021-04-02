@@ -9,12 +9,16 @@ const stream = require("stream");
 
 class ResponseStub extends EventEmitter {}
 
-class RequestStub extends EventEmitter {
+class RequestStub extends stream.Writable {
   constructor() {
     super();
     this.setTimeout = sinon.stub();
+    this.writtenChunks = [];
   }
-  end() {}
+  _write(chunk, _encoding, callback) {
+    this.writtenChunks.push(chunk);
+    callback();
+  }
 }
 
 class SocketStub extends EventEmitter {
@@ -128,6 +132,50 @@ describe("request", () => {
       body: "foobar"
     });
     assert.equal(requestStub.write.firstCall.args[0], "foobar");
+  });
+
+  it("should pipe the body stream of the request if one is provied", done => {
+    const body = new stream.PassThrough();
+    request({
+      body
+    });
+    requestStub.on("finish", () => {
+      assert.deepEqual(requestStub.writtenChunks, [
+        Buffer.from("foo"),
+        Buffer.from("bar")
+      ]);
+      done();
+    });
+    body.write("foo");
+    body.end("bar");
+  });
+
+  it("should abort the request if the request body stream emits an error", () => {
+    requestStub.abort = sinon.spy();
+    const body = new stream.PassThrough();
+    const promise = request({
+      body
+    });
+    body.write("foo");
+    body.emit("error", new Error("body stream error"));
+    return promise.then(fail, error => {
+      assert.equal(error.message, "body stream error");
+      assert(requestStub.abort.calledOnce);
+    });
+  });
+
+  it("should return body of type Buffer when autoDecodeUtf8 is set to false ", () => {
+    const promise = request({
+      autoDecodeUtf8: false
+    });
+    const responseStub = new ResponseStub();
+    requestStub.emit("response", responseStub);
+    responseStub.emit("data", Buffer.from("foo"));
+    responseStub.emit("data", Buffer.from("bar"));
+    responseStub.emit("end");
+    return promise.then(response => {
+      assert.deepEqual(response.body, Buffer.from("foobar"));
+    });
   });
 
   it("should resolve the promise with full response on success", () => {
@@ -305,6 +353,17 @@ describe("request", () => {
     return promise.then(fail, error => {
       assert.equal(error.message, "request timeout");
       assert(requestStub.abort.calledOnce);
+    });
+  });
+
+  it("should not abort the request on request error", () => {
+    requestStub.abort = sinon.stub();
+    httpsStub.request.returns(requestStub);
+    const promise = request({ dropRequestAfter: 500 });
+    requestStub.emit("error", new Error("request failed"));
+    clock.tick(500);
+    return promise.then(fail, () => {
+      assert(requestStub.abort.notCalled);
     });
   });
 

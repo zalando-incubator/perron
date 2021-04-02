@@ -17,7 +17,8 @@ import {
   ServiceClientResponse,
   TimingPhases,
   Timings,
-  UserTimeoutError
+  UserTimeoutError,
+  BodyStreamError
 } from "./request";
 
 export {
@@ -51,14 +52,17 @@ export interface ServiceClientRequestFilter {
    */
   request?: (
     requestOptions: ServiceClientRequestOptions
-  ) => Promise<ServiceClientResponse | ServiceClientRequestOptions>;
+  ) =>
+    | ServiceClientResponse
+    | ServiceClientRequestOptions
+    | Promise<ServiceClientResponse | ServiceClientRequestOptions>;
   /**
    * This callback is called after the response has arrived.
    * @throws {Error}
    */
   response?: (
     response: ServiceClientResponse
-  ) => Promise<ServiceClientResponse>;
+  ) => ServiceClientResponse | Promise<ServiceClientResponse>;
 }
 
 /**
@@ -278,6 +282,15 @@ export class RequestUserTimeoutError extends ServiceClientError {
   }
 }
 
+export class RequestBodyStreamError extends ServiceClientError {
+  public requestOptions: ServiceClientRequestOptions;
+
+  constructor(originalError: RequestError, name: string) {
+    super(originalError, ServiceClient.REQUEST_FAILED, undefined, name);
+    this.requestOptions = originalError.requestOptions;
+  }
+}
+
 export class ShouldRetryRejectedError extends ServiceClientError {
   constructor(originalError: Error, type: string, name: string) {
     super(originalError, type, undefined, name);
@@ -374,6 +387,8 @@ const requestWithFilters = (
               throw new RequestConnectionTimeoutError(error, client.name);
             } else if (error instanceof UserTimeoutError) {
               throw new RequestUserTimeoutError(error, client.name);
+            } else if (error instanceof BodyStreamError) {
+              throw new RequestBodyStreamError(error, client.name);
             } else if (error instanceof ReadTimeoutError) {
               throw new RequestReadTimeoutError(error, client.name);
             } else if (error instanceof NetworkError) {
@@ -586,6 +601,8 @@ export class ServiceClient {
 
     params.hostname = this.options.hostname;
     params.port = params.port || (params.protocol === "https:" ? 443 : 80);
+    params.timing =
+      params.timing !== undefined ? params.timing : this.options.timing;
 
     params.headers = {
       accept: "application/json",
