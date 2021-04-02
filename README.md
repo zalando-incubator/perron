@@ -217,6 +217,33 @@ const catWatch = new ServiceClient({
 });
 ```
 
+#### Scheduled retries
+
+Timeouts are often the reason for retries. You might want to retry your request *without* waiting for the initial request to timeout, giving more time to the service you are calling to reply to initial request but still keeping the same overal requests timeout.
+
+For this purpose you can use `retryAfter` in `retryOptions` in combination with `dropAllRequestsAfter` in options root. If you have retries configured and initial request has not resolved before `retryAfter`, another request will be sent and whichever requests will resolve first will be treated, aborting the other one(s).
+
+`retryAfter` logic is immediate and will not take into account minTimeout or maxTimeout.
+
+```js
+const {ServiceClient} = require('perron');
+
+const catWatch = new ServiceClient({
+    hostname: 'catwatch.opensource.zalan.do',
+    dropAllRequestsAfter: 1000
+    retryOptions: {
+        retries: 1,
+        retryAfter: 400,
+        shouldRetry(err, req) {
+            return (err && err.response && err.response.statusCode >= 500);
+        },
+        onRetry(currentAttempt, err, req) {
+            console.log('Retry attempt #' + currentAttempt + ' for ' + req.path + ' due to ' + err);
+        }
+    }
+});
+```
+
 ## Filters
 
 It's quite often necessary to do some pre- or post-processing of the request. For this purpose `perron` implements a concept of filters, that are just an object with 2 optional methods: `request` and `response`.

@@ -72,6 +72,7 @@ export interface ServiceClientRequestOptions extends RequestOptions {
    * Opentracing like span interface to log events
    */
   span?: Span;
+  registerAbortCallback?: (abortFunction: () => void) => void;
 }
 
 export class ServiceClientResponse {
@@ -232,6 +233,28 @@ export const request = (
     }
 
     const requestObject = httpRequestFn(options);
+
+    let dropRequestAfterTimeout: NodeJS.Timer;
+    if (options.dropRequestAfter) {
+      dropRequestAfterTimeout = setTimeout(() => {
+        abortCallback();
+      }, options.dropRequestAfter);
+    }
+
+    function abortCallback() {
+      clearTimeout(dropRequestAfterTimeout);
+      if (!hasRequestEnded) {
+        requestObject.abort();
+        const err = new UserTimeoutError(options, timings);
+        logEvent(EventSource.HTTP_REQUEST, EventName.ERROR, err.message);
+        reject(err);
+      }
+    }
+
+    if (options.registerAbortCallback) {
+      options.registerAbortCallback(abortCallback);
+    }
+
     requestObject.setTimeout(readTimeout, () => {
       logEvent(EventSource.HTTP_REQUEST, EventName.TIMEOUT);
       requestObject.socket.destroy();
@@ -376,7 +399,6 @@ export const request = (
       }, options.dropRequestAfter);
     }
 
-    logEvent(EventSource.HTTP_REQUEST, EventName.START);
     if (options.body) {
       if (typeof options.body.pipe === "function") {
         const requestBody: Readable = options.body;
@@ -389,6 +411,7 @@ export const request = (
       }
       requestObject.write(options.body);
     }
+    logEvent(EventSource.HTTP_REQUEST, EventName.START);
     requestObject.end();
   });
 };

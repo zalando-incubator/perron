@@ -1,6 +1,6 @@
 export function operation(
   options: OperationOptions,
-  fn: (currentAttempt: number) => void
+  fn: (scheduledRetry: boolean) => void
 ) {
   return new RetryOperation(timeouts(options), fn);
 }
@@ -69,28 +69,43 @@ interface CreateTimeoutOptions {
 
 class RetryOperation {
   private readonly _timeouts: number[];
-  private readonly _fn: (currentAttempt: number) => void;
+  private readonly _fn: (scheduledRetry: boolean) => void;
+  private _resolved: boolean;
   private _attempts: number;
-  constructor(timeouts: number[], fn: (currentAttempt: number) => void) {
+  constructor(timeouts: number[], fn: (scheduledRetry: boolean) => void) {
     this._timeouts = timeouts;
     this._fn = fn;
+    this._resolved = false;
     this._attempts = 1;
   }
 
-  retry() {
+  retry(immediate: boolean = false) {
     if (this._attempts > this._timeouts.length) {
       return false;
     }
-    let timeout = this._timeouts[this._attempts - 1];
+    if (immediate) {
+      this._attempts++;
+      this._fn(immediate);
+      return this._attempts - 1;
+    }
+
     setTimeout(() => {
       this._attempts++;
-      this._fn(this._attempts);
-    }, timeout);
+      this._fn(immediate);
+    }, this._timeouts[this._attempts - 1]);
 
-    return true;
+    return this._attempts;
   }
 
   attempt() {
-    this._fn(this._attempts);
+    this._fn(false);
+  }
+
+  resolved() {
+    this._resolved = true;
+  }
+
+  isResolved() {
+    return this._resolved;
   }
 }

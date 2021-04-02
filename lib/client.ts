@@ -5,6 +5,7 @@ import {
   CircuitBreakerPublicApi
 } from "./circuit-breaker";
 import { operation } from "./retry";
+import { performance } from "perf_hooks";
 import * as url from "url";
 import {
   ConnectionTimeoutError,
@@ -88,6 +89,7 @@ export class ServiceClientOptions {
   public autoParseJson?: boolean;
   public retryOptions?: {
     retries?: number;
+    retryAfter?: number;
     factor?: number;
     minTimeout?: number;
     maxTimeout?: number;
@@ -101,6 +103,7 @@ export class ServiceClientOptions {
   };
   public circuitBreaker?: false | CircuitBreakerOptions | CircuitBreakerFactory;
   public defaultRequestOptions?: Partial<ServiceClientRequestOptions>;
+  public dropAllRequestsAfter?: number;
 }
 
 /**
@@ -113,6 +116,7 @@ class ServiceClientStrictOptions {
   public autoParseJson: boolean;
   public retryOptions: {
     retries: number;
+    retryAfter: number;
     factor: number;
     minTimeout: number;
     maxTimeout: number;
@@ -125,6 +129,7 @@ class ServiceClientStrictOptions {
     ) => void;
   };
   public defaultRequestOptions: ServiceClientRequestOptions;
+  public dropAllRequestsAfter: number;
 
   constructor(options: ServiceClientOptions) {
     if (!options.hostname) {
@@ -144,6 +149,7 @@ class ServiceClientStrictOptions {
       minTimeout: 200,
       randomize: true,
       retries: 0,
+      retryAfter: 0,
       shouldRetry() {
         return true;
       },
@@ -167,6 +173,8 @@ class ServiceClientStrictOptions {
       timeout: 2000,
       ...options.defaultRequestOptions
     };
+
+    this.dropAllRequestsAfter = options.dropAllRequestsAfter || 0;
   }
 }
 
@@ -603,6 +611,7 @@ export class ServiceClient {
 
     const {
       retries,
+      retryAfter,
       factor,
       minTimeout,
       maxTimeout,
@@ -621,10 +630,31 @@ export class ServiceClient {
 
     const retryErrors: ServiceClientError[] = [];
     return new Promise<ServiceClientResponse>((resolve, reject) => {
+      const timerInitial = performance.now();
       const breaker = this.getCircuitBreaker(params);
-      const retryOperation = operation(opts, (currentAttempt: number) => {
+      const requestsAbortCallbacks: (() => void)[] = [];
+      const retryOperation = operation(opts, scheduledRetry => {
         breaker.run(
           (success: () => void, failure: () => void) => {
+            if (this.options.dropAllRequestsAfter) {
+              const timerLeft =
+                this.options.dropAllRequestsAfter -
+                (performance.now() - timerInitial);
+              if (params.dropRequestAfter) {
+                params.dropRequestAfter = Math.min(
+                  params.dropRequestAfter,
+                  timerLeft
+                );
+              } else {
+                params.dropRequestAfter = timerLeft;
+              }
+            }
+
+            if (retryAfter) {
+              params.registerAbortCallback = cb =>
+                requestsAbortCallbacks.push(cb);
+            }
+
             return requestWithFilters(
               this,
               params,
@@ -632,11 +662,22 @@ export class ServiceClient {
               this.options.autoParseJson
             )
               .then((result: ServiceClientResponse) => {
+                if (retryOperation.isResolved()) {
+                  return;
+                }
+                retryOperation.resolved();
                 success();
                 result.retryErrors = retryErrors;
                 resolve(result);
+                if (retryAfter) {
+                  requestsAbortCallbacks.forEach(cb => cb());
+                  requestsAbortCallbacks.length = 0;
+                }
               })
               .catch((error: ServiceClientError) => {
+                if (retryOperation.isResolved()) {
+                  return;
+                }
                 retryErrors.push(error);
                 failure();
                 if (!shouldRetry(error, params)) {
@@ -645,11 +686,12 @@ export class ServiceClient {
                   );
                   return;
                 }
-                if (!retryOperation.retry()) {
+                const currentAttempt = retryOperation.retry();
+                if (!currentAttempt) {
                   // Wrapping error when user does not want retries would result
                   // in bad developer experience where you always have to unwrap it
                   // knowing there is only one error inside, so we do not do that.
-                  if (retries === 0) {
+                  if (retries === 0 || scheduledRetry) {
                     reject(error);
                   } else {
                     reject(
@@ -671,6 +713,20 @@ export class ServiceClient {
         );
       });
       retryOperation.attempt();
+
+      if (retryAfter) {
+        const retryAfterTimeout = () =>
+          setTimeout(() => {
+            if (!retryOperation.isResolved()) {
+              const currentAttempt = retryOperation.retry(true);
+              if (currentAttempt) {
+                onRetry(currentAttempt + 1, undefined, params);
+                retryAfterTimeout();
+              }
+            }
+          }, retryAfter);
+        retryAfterTimeout();
+      }
     }).catch((error: unknown) => {
       const rawError =
         error instanceof Error ? error : new Error(String(error));
