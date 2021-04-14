@@ -1,2 +1,7 @@
 # This makes the repo play nice with git on Windows
 * text=auto
+
+# do not show up in local diffs
+# do not show up as expanded in github diffs
+# https://github.com/github/linguist#generated-code
+package-lock.json binary merge=union linguist-generated
