@@ -81,7 +81,7 @@ class RetryOperation {
     if (this._attempts > this._timeouts.length) {
       return false;
     }
-    let timeout = this._timeouts[this._attempts - 1];
+    const timeout = this._timeouts[this._attempts - 1];
     setTimeout(() => {
       this._attempts++;
       this._fn(this._attempts);

@@ -23,6 +23,7 @@ describe("CircuitBreaker", function() {
   };
 
   const timeout = function() {
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
     const command = function() {};
     breaker.run(command);
 
