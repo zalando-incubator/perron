@@ -525,21 +525,18 @@ export class ServiceClient {
   constructor(optionsOrUrl: ServiceClientOptions | string) {
     let options: ServiceClientOptions;
     if (typeof optionsOrUrl === "string") {
-      const {
-        port,
-        protocol,
-        query,
-        hostname = "",
-        pathname = "/"
-      } = url.parse(optionsOrUrl, true);
+      const { port, protocol, query, hostname, pathname } = url.parse(
+        optionsOrUrl,
+        true
+      );
       options = {
-        hostname,
+        hostname: hostname || "",
         defaultRequestOptions: {
           port,
           protocol,
           query,
           // pathname will be overwritten in actual usage, we just guarantee a sane default
-          pathname
+          pathname: pathname || "/"
         }
       };
     } else {

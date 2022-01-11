@@ -9,6 +9,7 @@ import * as zlib from "zlib";
 import { ServiceClientError } from "./client";
 import { Socket } from "net";
 import { Readable } from "stream";
+import { ParsedUrlQueryInput } from "querystring";
 
 const DEFAULT_READ_TIMEOUT = 2000;
 const DEFAULT_CONNECTION_TIMEOUT = 1000;
@@ -53,7 +54,7 @@ interface Span {
 
 export interface ServiceClientRequestOptions extends RequestOptions {
   pathname: string;
-  query?: object;
+  query?: ParsedUrlQueryInput;
   timing?: boolean;
   autoDecodeUtf8?: boolean;
   dropRequestAfter?: number;

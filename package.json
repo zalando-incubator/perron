@@ -25,7 +25,7 @@
   "license": "MIT",
   "devDependencies": {
     "@types/mocha": "^5.2.7",
-    "@types/node": "^8.10.49",
+    "@types/node": "^12.20.41",
     "@typescript-eslint/eslint-plugin": "^5.8.0",
     "@typescript-eslint/parser": "^5.8.0",
     "eslint": "^7.32.0",
@@ -37,6 +37,6 @@
     "prettier": "^1.18.2",
     "proxyquire": "^2.1.0",
     "sinon": "^7.3.2",
-    "typescript": "^3.5.1"
+    "typescript": "^3.9.10"
   }
 }
