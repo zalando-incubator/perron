@@ -72,7 +72,7 @@ export class ServiceClientOptions {
    * This is the only mandatory option when creating a service client. All other properties have
    * reasonable defaults.
    */
-  public hostname: string = "";
+  public hostname = "";
   /**
    * Name of the client. Primarily used in errors. Defaults to hostname.
    */
@@ -187,7 +187,7 @@ export abstract class ServiceClientError extends Error {
     originalError: Error,
     type: string,
     public response?: ServiceClientResponse,
-    name: string = "ServiceClient"
+    name = "ServiceClient"
   ) {
     super(`${name}: ${type}. ${originalError.message || ""}`);
     this.type = type;
@@ -199,6 +199,7 @@ export abstract class ServiceClientError extends Error {
       timingPhases?: TimingPhases;
       // This is necessary to shut up TypeScript as otherwise it treats
       // types with all optional properties differently
+      // eslint-disable-next-line @typescript-eslint/ban-types
       constructor: Function;
     } = response || originalError;
     this.timings = timingSource.timings;

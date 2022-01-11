@@ -36,6 +36,7 @@ interface Bucket {
 
 export type Command = (success: () => void, failure: () => void) => void;
 
+// eslint-disable-next-line @typescript-eslint/no-empty-function
 function noop() {}
 
 export interface CircuitBreakerPublicApi {
@@ -90,7 +91,7 @@ export class CircuitBreaker implements CircuitBreakerPublicApi {
 
   public run(command: Command, fallback?: () => void) {
     if (this.isOpen()) {
-      this.executeFallback(fallback || function() {});
+      this.executeFallback(fallback || noop);
     } else {
       this.executeCommand(command);
     }
@@ -118,6 +119,7 @@ export class CircuitBreaker implements CircuitBreakerPublicApi {
   }
 
   private startTicker() {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this;
     const bucketDuration = this.windowDuration / this.buckets.length;
 
@@ -152,6 +154,7 @@ export class CircuitBreaker implements CircuitBreakerPublicApi {
   }
 
   private executeCommand(command: Command) {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this;
     let timeout: NodeJS.Timer | undefined;
 
