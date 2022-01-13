@@ -235,7 +235,9 @@ export const request = (
     const requestObject = httpRequestFn(options);
     requestObject.setTimeout(readTimeout, () => {
       logEvent(EventSource.HTTP_REQUEST, EventName.TIMEOUT);
-      requestObject.socket.destroy();
+      if (requestObject.socket != null) {
+        requestObject.socket.destroy();
+      }
       reject(new ReadTimeoutError(options));
     });
 
