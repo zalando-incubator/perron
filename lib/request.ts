@@ -4,11 +4,11 @@ import {
   request as httpRequest
 } from "http";
 import { request as httpsRequest, RequestOptions } from "https";
-import * as querystring from "querystring";
 import * as zlib from "zlib";
 import { ServiceClientError } from "./client";
 import { Socket } from "net";
 import { Readable } from "stream";
+import { URLSearchParams } from "url";
 
 const DEFAULT_READ_TIMEOUT = 2000;
 const DEFAULT_CONNECTION_TIMEOUT = 1000;
@@ -53,7 +53,7 @@ interface Span {
 
 export interface ServiceClientRequestOptions extends RequestOptions {
   pathname: string;
-  query?: object;
+  query?: { [key: string]: string | string[] | undefined };
   timing?: boolean;
   autoDecodeUtf8?: boolean;
   dropRequestAfter?: number;
@@ -200,7 +200,7 @@ export const request = (
 
   if ("pathname" in options && !("path" in options)) {
     if ("query" in options) {
-      let query = querystring.stringify(options.query);
+      let query = new URLSearchParams(options.query).toString();
       if (query) {
         query = "?" + query;
       }
