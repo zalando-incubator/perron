@@ -19,13 +19,9 @@ import {
   UserTimeoutError,
   BodyStreamError
 } from "./request";
-import { requestWithWorker } from "./request-worker";
 
 import Piscina from "piscina";
 import path from "path";
-import { argv } from "process";
-import nock from "nock/types";
-
 export {
   CircuitBreaker,
   CircuitBreakerOptions,
@@ -357,8 +353,6 @@ const requestWithFilters = (
 ): Promise<ServiceClientResponse> => {
   const pendingResponseFilters: ServiceClientRequestFilter[] = [];
 
-  console.log("GINNEE");
-
   const requestFilterPromise = filters.reduce(
     (
       promise: Promise<ServiceClientResponse | ServiceClientRequestOptions>,
@@ -377,15 +371,15 @@ const requestWithFilters = (
     Promise.resolve(requestOptions)
   );
 
-  console.log("POST_GINNEE");
-
-  const piscina = new Piscina({
-    filename: path.resolve(__dirname, "piscina-worker.js")
-  });
+  let piscina: Piscina | undefined;
+  if (enableWorkers) {
+    piscina = new Piscina({
+      filename: path.resolve(__dirname, "piscina-worker.js")
+    });
+  }
 
   return requestFilterPromise
     .catch((error: Error) => {
-      console.log("FAILED in filter");
       throw new RequestFilterError(error, client.name);
     })
     .then(paramsOrResponse => {
@@ -394,20 +388,18 @@ const requestWithFilters = (
         span,
         ...otherOptions
       } = paramsOrResponse as ServiceClientRequestOptions;
-      
-      console.log("PARAMS: ", paramsOrResponse);
 
       return paramsOrResponse instanceof ServiceClientResponse
         ? paramsOrResponse
         : enableWorkers
-        ? piscina.run({
-            options: {
-              ...otherOptions,
-              spanCode: span?.log.toString()
-            }
-          }).catch((error: RequestError) => {
-            console.log("FAILED in worker")
-  
+        ? piscina
+            ?.run({
+              options: {
+                ...otherOptions,
+                spanCode: span?.log.toString()
+              }
+            })
+            .catch((error: RequestError) => {
               if (error instanceof ConnectionTimeoutError) {
                 throw new RequestConnectionTimeoutError(error, client.name);
               } else if (error instanceof UserTimeoutError) {
@@ -423,8 +415,6 @@ const requestWithFilters = (
               }
             })
         : request(paramsOrResponse).catch((error: RequestError) => {
-          console.log("FAILED in worker")
-
             if (error instanceof ConnectionTimeoutError) {
               throw new RequestConnectionTimeoutError(error, client.name);
             } else if (error instanceof UserTimeoutError) {
@@ -438,8 +428,20 @@ const requestWithFilters = (
             } else {
               throw error;
             }
-          })
-        })
+          });
+    })
+    .then(response => {
+      if (Array.isArray(response)) {
+        const [statusCode, headers, body] = response;
+        return new ServiceClientResponse(
+          statusCode,
+          headers,
+          body,
+          requestOptions
+        );
+      }
+      return response;
+    })
     .then(rawResponse =>
       autoParseJson ? decodeResponse(client, rawResponse) : rawResponse
     )
@@ -638,7 +640,7 @@ export class ServiceClient {
    */
   public request(
     userParams: ServiceClientRequestOptions,
-    enableWorkers: boolean = false
+    enableWorkers = false
   ): Promise<ServiceClientResponse> {
     const params = { ...this.options.defaultRequestOptions, ...userParams };
 
@@ -724,7 +726,6 @@ export class ServiceClient {
       });
       retryOperation.attempt();
     }).catch((error: unknown) => {
-      console.log("ERROR: ", error);
       const rawError =
         error instanceof Error ? error : new Error(String(error));
       const wrappedError =
@@ -739,11 +740,9 @@ export class ServiceClient {
   public requestWithWorker(
     userParams: ServiceClientRequestOptions
   ): Promise<ServiceClientResponse> {
-    return this.request({...userParams},true)
+    return this.request({ ...userParams }, true);
   }
 }
-
-
 
 Object.freeze(ServiceClient);
 

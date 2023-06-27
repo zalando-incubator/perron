@@ -9,7 +9,6 @@ import * as zlib from "zlib";
 import { ServiceClientError } from "./client";
 import { Socket } from "net";
 import { Readable } from "stream";
-import { Worker } from "worker_threads";
 
 const DEFAULT_READ_TIMEOUT = 2000;
 const DEFAULT_CONNECTION_TIMEOUT = 1000;
@@ -213,9 +212,6 @@ export const request = (
 
   const connectionTimeout = options.timeout || DEFAULT_CONNECTION_TIMEOUT;
   const readTimeout = options.readTimeout || DEFAULT_READ_TIMEOUT;
-
-  console.log("PATH: ", options.path);
-  console.log("OPTIONS: ", options);
 
   const httpRequestFn =
     options.protocol === "https:" ? httpsRequest : httpRequest;

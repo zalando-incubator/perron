@@ -11,7 +11,8 @@
     "lint": "eslint . --ext .ts,.tsx,.js",
     "test": "npm run lint && tsc && mocha test",
     "test-cov": "npm run lint && tsc && nyc --check-coverage --lines 90 --functions 85 --branches 85 mocha test",
-    "tdd": "mocha test --watch"
+    "tdd": "mocha test --watch",
+    "build": "npm run tsc"
   },
   "repository": {
     "type": "git",
