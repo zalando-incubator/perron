@@ -348,12 +348,9 @@ const requestWithFilters = (
   requestOptions: ServiceClientRequestOptions,
   filters: ServiceClientRequestFilter[],
   autoParseJson: boolean,
-  enableWorkers: boolean = false
+  enableWorkers = false
 ): Promise<ServiceClientResponse> => {
   const pendingResponseFilters: ServiceClientRequestFilter[] = [];
-
-  console.log("GINNEE")
-
   const requestFilterPromise = filters.reduce(
     (
       promise: Promise<ServiceClientResponse | ServiceClientRequestOptions>,
@@ -372,19 +369,16 @@ const requestWithFilters = (
     Promise.resolve(requestOptions)
   );
 
-  console.log("POST_GINNEE")
-
   return requestFilterPromise
     .catch((error: Error) => {
-      console.log("FAILED in filter")
       throw new RequestFilterError(error, client.name);
     })
     .then(paramsOrResponse =>
       paramsOrResponse instanceof ServiceClientResponse
         ? paramsOrResponse
-        : enableWorkers?requestWithWorker(paramsOrResponse):request(paramsOrResponse).catch((error: RequestError) => {
-          console.log("FAILED in worker")
-
+        : enableWorkers
+        ? requestWithWorker(paramsOrResponse)
+        : request(paramsOrResponse).catch((error: RequestError) => {
             if (error instanceof ConnectionTimeoutError) {
               throw new RequestConnectionTimeoutError(error, client.name);
             } else if (error instanceof UserTimeoutError) {
@@ -598,7 +592,7 @@ export class ServiceClient {
    */
   public request(
     userParams: ServiceClientRequestOptions,
-    enableWorkers: boolean = false
+    enableWorkers = false
   ): Promise<ServiceClientResponse> {
     const params = { ...this.options.defaultRequestOptions, ...userParams };
 
@@ -698,11 +692,9 @@ export class ServiceClient {
   public requestWithWorker(
     userParams: ServiceClientRequestOptions
   ): Promise<ServiceClientResponse> {
-    return this.request({...userParams},true)
+    return this.request({ ...userParams }, true);
   }
 }
-
-
 
 Object.freeze(ServiceClient);
 
