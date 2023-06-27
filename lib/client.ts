@@ -23,6 +23,8 @@ import { requestWithWorker } from "./request-worker";
 
 import Piscina from "piscina";
 import path from "path";
+import { argv } from "process";
+import nock from "nock/types";
 
 export {
   CircuitBreaker,
@@ -392,6 +394,8 @@ const requestWithFilters = (
         span,
         ...otherOptions
       } = paramsOrResponse as ServiceClientRequestOptions;
+      
+      console.log("PARAMS: ", paramsOrResponse);
 
       return paramsOrResponse instanceof ServiceClientResponse
         ? paramsOrResponse
@@ -401,7 +405,23 @@ const requestWithFilters = (
               ...otherOptions,
               spanCode: span?.log.toString()
             }
-          })
+          }).catch((error: RequestError) => {
+            console.log("FAILED in worker")
+  
+              if (error instanceof ConnectionTimeoutError) {
+                throw new RequestConnectionTimeoutError(error, client.name);
+              } else if (error instanceof UserTimeoutError) {
+                throw new RequestUserTimeoutError(error, client.name);
+              } else if (error instanceof BodyStreamError) {
+                throw new RequestBodyStreamError(error, client.name);
+              } else if (error instanceof ReadTimeoutError) {
+                throw new RequestReadTimeoutError(error, client.name);
+              } else if (error instanceof NetworkError) {
+                throw new RequestNetworkError(error, client.name);
+              } else {
+                throw error;
+              }
+            })
         : request(paramsOrResponse).catch((error: RequestError) => {
           console.log("FAILED in worker")
 
@@ -704,6 +724,7 @@ export class ServiceClient {
       });
       retryOperation.attempt();
     }).catch((error: unknown) => {
+      console.log("ERROR: ", error);
       const rawError =
         error instanceof Error ? error : new Error(String(error));
       const wrappedError =
