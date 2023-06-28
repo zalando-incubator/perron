@@ -9,7 +9,6 @@ import * as zlib from "zlib";
 import { ServiceClientError } from "./client";
 import { Socket } from "net";
 import { Readable } from "stream";
-import requestWithWorker from "./piscina-worker";
 
 const DEFAULT_READ_TIMEOUT = 2000;
 const DEFAULT_CONNECTION_TIMEOUT = 1000;
@@ -393,18 +392,3 @@ export const request = (
     requestObject.end();
   });
 };
-
-// This exists only for testing...
-export const requestWorker = (opts: ServiceClientRequestOptions) =>
-  requestWithWorker({ options: opts }).then(res => {
-    const [statusCode, headers, body, timings, timingPhases] = res;
-    const scResponse = new ServiceClientResponse(
-      statusCode,
-      headers,
-      body,
-      opts
-    );
-    scResponse.timings = timings;
-    scResponse.timingPhases = timingPhases;
-    return scResponse;
-  });
