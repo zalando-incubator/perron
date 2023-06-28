@@ -1,22 +1,32 @@
-import { ServiceClientResponse, request } from "./request";
+import {
+  ServiceClientRequestOptions,
+  ServiceClientResponse,
+  request
+} from "./request";
 
 const requestWithWorker = async ({
   options
 }: {
   options: any;
 }): Promise<Array<any>> => {
-  options.span = {
-    log: (val: any) => {
-      console.log(val);
-    }
-  };
+  let opts = options;
+  if (!opts) {
+    opts = {} as ServiceClientRequestOptions;
+  }
+  if (!opts.span)
+    opts.span = {
+      log: (val: any) => {
+        console.log(val);
+      }
+    };
+  // opts.agent = new httpAgent(opts.agentOptions);
   let res: ServiceClientResponse;
   try {
-    res = await request(options);
+    res = await request(opts);
   } catch (e) {
     throw e;
   }
-  return [res.statusCode, res.headers, res.body];
+  return [res.statusCode, res.headers, res.body, res.timings, res.timingPhases];
 };
 
 export default requestWithWorker;

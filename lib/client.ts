@@ -306,6 +306,28 @@ export class InternalError extends ServiceClientError {
 
 const JSON_CONTENT_TYPE_REGEX = /application\/(.*?[+])?json/i;
 
+const agentPropKeys: string[] = [
+  "keepAliveMsecs",
+  "keepAlive",
+  "maxSockets",
+  "maxFreeSockets",
+  "scheduling",
+  "maxTotalSockets",
+  "totalSocketCount",
+  "createSocketCount",
+  "createSocketCountLastCheck",
+  "createSocketErrorCount"
+  // "createSocketErrorCountLastCheck",
+  // "closeSocketCount",
+  // "closeSocketCountLastCheck",
+  // "errorSocketCount",
+  // "errorSocketCountLastCheck",
+  // "requestCount",
+  // "requestCountLastCheck",
+  // "timeoutSocketCount",
+  // "timeoutSocketCountLastCheck"
+];
+
 /**
  * This function takes a response and if it is of type json, tries to parse the body.
  */
@@ -384,10 +406,18 @@ const requestWithFilters = (
     })
     .then(paramsOrResponse => {
       const {
-        agent,
         span,
+        agent,
         ...otherOptions
       } = paramsOrResponse as ServiceClientRequestOptions;
+
+      const agentOptions: { [key: string]: any } = {};
+
+      if (agent) {
+        for (const key of agentPropKeys) {
+          agentOptions[key] = (requestOptions.agent as any)[key];
+        }
+      }
 
       return paramsOrResponse instanceof ServiceClientResponse
         ? paramsOrResponse
@@ -395,6 +425,7 @@ const requestWithFilters = (
         ? piscina
             ?.run({
               options: {
+                agentOptions,
                 ...otherOptions,
                 spanCode: span?.log.toString()
               }
@@ -432,13 +463,16 @@ const requestWithFilters = (
     })
     .then(response => {
       if (Array.isArray(response)) {
-        const [statusCode, headers, body] = response;
-        return new ServiceClientResponse(
+        const [statusCode, headers, body, timings, timingPhases] = response;
+        const scResponse = new ServiceClientResponse(
           statusCode,
           headers,
           body,
           requestOptions
         );
+        scResponse.timings = timings;
+        scResponse.timingPhases = timingPhases;
+        return scResponse;
       }
       return response;
     })
