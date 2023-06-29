@@ -21,7 +21,7 @@ import {
 } from "./request";
 
 import Piscina from "piscina";
-import path from "path";
+
 export {
   CircuitBreaker,
   CircuitBreakerOptions,
@@ -371,7 +371,7 @@ const requestWithFilters = (
   requestOptions: ServiceClientRequestOptions,
   filters: ServiceClientRequestFilter[],
   autoParseJson: boolean,
-  enableWorkers = false
+  workerPool?: Piscina
 ): Promise<ServiceClientResponse> => {
   const pendingResponseFilters: ServiceClientRequestFilter[] = [];
 
@@ -392,13 +392,6 @@ const requestWithFilters = (
     },
     Promise.resolve(requestOptions)
   );
-
-  let piscina: Piscina | undefined;
-  if (enableWorkers) {
-    piscina = new Piscina({
-      filename: path.resolve(__dirname, "piscina-worker.js")
-    });
-  }
 
   return requestFilterPromise
     .catch((error: Error) => {
@@ -421,8 +414,8 @@ const requestWithFilters = (
 
       return paramsOrResponse instanceof ServiceClientResponse
         ? paramsOrResponse
-        : enableWorkers
-        ? piscina
+        : workerPool
+        ? workerPool
             ?.run({
               options: {
                 agentOptions,
@@ -674,7 +667,7 @@ export class ServiceClient {
    */
   public request(
     userParams: ServiceClientRequestOptions,
-    enableWorkers = false
+    workerPool?: Piscina
   ): Promise<ServiceClientResponse> {
     const params = { ...this.options.defaultRequestOptions, ...userParams };
 
@@ -717,7 +710,7 @@ export class ServiceClient {
               params,
               this.options.filters || [],
               this.options.autoParseJson,
-              enableWorkers
+              workerPool
             )
               .then((result: ServiceClientResponse) => {
                 success();
@@ -772,9 +765,10 @@ export class ServiceClient {
   }
 
   public requestWithWorker(
-    userParams: ServiceClientRequestOptions
+    userParams: ServiceClientRequestOptions,
+    workerPool?: Piscina
   ): Promise<ServiceClientResponse> {
-    return this.request({ ...userParams }, true);
+    return this.request({ ...userParams }, workerPool);
   }
 }
 
