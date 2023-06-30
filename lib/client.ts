@@ -306,28 +306,6 @@ export class InternalError extends ServiceClientError {
 
 const JSON_CONTENT_TYPE_REGEX = /application\/(.*?[+])?json/i;
 
-const agentPropKeys: string[] = [
-  "keepAliveMsecs",
-  "keepAlive",
-  "maxSockets",
-  "maxFreeSockets",
-  "scheduling",
-  "maxTotalSockets",
-  "totalSocketCount",
-  "createSocketCount",
-  "createSocketCountLastCheck",
-  "createSocketErrorCount"
-  // "createSocketErrorCountLastCheck",
-  // "closeSocketCount",
-  // "closeSocketCountLastCheck",
-  // "errorSocketCount",
-  // "errorSocketCountLastCheck",
-  // "requestCount",
-  // "requestCountLastCheck",
-  // "timeoutSocketCount",
-  // "timeoutSocketCountLastCheck"
-];
-
 /**
  * This function takes a response and if it is of type json, tries to parse the body.
  */
@@ -404,21 +382,12 @@ const requestWithFilters = (
         ...otherOptions
       } = paramsOrResponse as ServiceClientRequestOptions;
 
-      const agentOptions: { [key: string]: any } = {};
-
-      if (agent) {
-        for (const key of agentPropKeys) {
-          agentOptions[key] = (requestOptions.agent as any)[key];
-        }
-      }
-
       return paramsOrResponse instanceof ServiceClientResponse
         ? paramsOrResponse
         : workerPool
         ? workerPool
             ?.run({
               options: {
-                agentOptions,
                 ...otherOptions,
                 spanCode: span?.log.toString()
               }
