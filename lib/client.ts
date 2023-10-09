@@ -95,7 +95,7 @@ export class ServiceClientOptions {
     shouldRetry?: (err?: Error, req?: ServiceClientRequestOptions) => boolean;
     onRetry?: (
       currentAttempt?: number,
-      err?: Error,
+      err?: ServiceClientError,
       req?: ServiceClientRequestOptions
     ) => void;
   };
