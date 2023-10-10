@@ -1,5 +1,5 @@
 ## 0.11.5
-* use ServiceClientError type for Errors in shouldRetry and onRetry options 
+* use ServiceClientError type for Errors in shouldRetry and onRetry options.
 
 ## 0.11.3
 
