@@ -92,10 +92,13 @@ export class ServiceClientOptions {
     minTimeout?: number;
     maxTimeout?: number;
     randomize?: boolean;
-    shouldRetry?: (err?: Error, req?: ServiceClientRequestOptions) => boolean;
+    shouldRetry?: (
+      err?: ServiceClientError,
+      req?: ServiceClientRequestOptions
+    ) => boolean;
     onRetry?: (
       currentAttempt?: number,
-      err?: Error,
+      err?: ServiceClientError,
       req?: ServiceClientRequestOptions
     ) => void;
   };
@@ -117,10 +120,13 @@ class ServiceClientStrictOptions {
     minTimeout: number;
     maxTimeout: number;
     randomize: boolean;
-    shouldRetry: (err?: Error, req?: ServiceClientRequestOptions) => boolean;
+    shouldRetry: (
+      err?: ServiceClientError,
+      req?: ServiceClientRequestOptions
+    ) => boolean;
     onRetry: (
       currentAttempt?: number,
-      err?: Error,
+      err?: ServiceClientError,
       req?: ServiceClientRequestOptions
     ) => void;
   };
