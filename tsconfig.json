@@ -10,6 +10,7 @@
     "alwaysStrict": true,
     "outDir": "./dist",
     "rootDir": "./lib",
+    "esModuleInterop": true,
     "lib": [
       "es2020"
     ],

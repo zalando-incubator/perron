@@ -20,6 +20,8 @@ import {
   BodyStreamError
 } from "./request";
 
+import Piscina from "piscina";
+
 export {
   CircuitBreaker,
   CircuitBreakerOptions,
@@ -327,7 +329,7 @@ const decodeResponse = (
     try {
       response.body = JSON.parse(response.body);
     } catch (error) {
-      throw new BodyParseError(error, response, client.name);
+      throw new BodyParseError(error as Error, response, client.name);
     }
   }
   return response;
@@ -352,7 +354,8 @@ const requestWithFilters = (
   client: ServiceClient,
   requestOptions: ServiceClientRequestOptions,
   filters: ServiceClientRequestFilter[],
-  autoParseJson: boolean
+  autoParseJson: boolean,
+  workerPool?: Piscina
 ): Promise<ServiceClientResponse> => {
   const pendingResponseFilters: ServiceClientRequestFilter[] = [];
 
@@ -378,9 +381,38 @@ const requestWithFilters = (
     .catch((error: Error) => {
       throw new RequestFilterError(error, client.name);
     })
-    .then(paramsOrResponse =>
-      paramsOrResponse instanceof ServiceClientResponse
+    .then(paramsOrResponse => {
+      const {
+        span,
+        agent,
+        ...otherOptions
+      } = paramsOrResponse as ServiceClientRequestOptions;
+
+      return paramsOrResponse instanceof ServiceClientResponse
         ? paramsOrResponse
+        : workerPool
+        ? workerPool
+            ?.run({
+              options: {
+                ...otherOptions,
+                spanCode: span?.log.toString()
+              }
+            })
+            .catch((error: RequestError) => {
+              if (error instanceof ConnectionTimeoutError) {
+                throw new RequestConnectionTimeoutError(error, client.name);
+              } else if (error instanceof UserTimeoutError) {
+                throw new RequestUserTimeoutError(error, client.name);
+              } else if (error instanceof BodyStreamError) {
+                throw new RequestBodyStreamError(error, client.name);
+              } else if (error instanceof ReadTimeoutError) {
+                throw new RequestReadTimeoutError(error, client.name);
+              } else if (error instanceof NetworkError) {
+                throw new RequestNetworkError(error, client.name);
+              } else {
+                throw error;
+              }
+            })
         : request(paramsOrResponse).catch((error: RequestError) => {
             if (error instanceof ConnectionTimeoutError) {
               throw new RequestConnectionTimeoutError(error, client.name);
@@ -395,8 +427,23 @@ const requestWithFilters = (
             } else {
               throw error;
             }
-          })
-    )
+          });
+    })
+    .then(response => {
+      if (Array.isArray(response)) {
+        const [statusCode, headers, body, timings, timingPhases] = response;
+        const scResponse = new ServiceClientResponse(
+          statusCode,
+          headers,
+          body,
+          requestOptions
+        );
+        scResponse.timings = timings;
+        scResponse.timingPhases = timingPhases;
+        return scResponse;
+      }
+      return response;
+    })
     .then(rawResponse =>
       autoParseJson ? decodeResponse(client, rawResponse) : rawResponse
     )
@@ -539,13 +586,13 @@ export class ServiceClient {
         pathname = "/"
       } = url.parse(optionsOrUrl, true);
       options = {
-        hostname,
+        hostname: hostname as any,
         defaultRequestOptions: {
           port,
           protocol,
           query,
           // pathname will be overwritten in actual usage, we just guarantee a sane default
-          pathname
+          pathname: pathname as any
         }
       };
     } else {
@@ -594,7 +641,8 @@ export class ServiceClient {
    * Perform a request to the service using given @{link ServiceClientRequestOptions}, returning the result in a promise.
    */
   public request(
-    userParams: ServiceClientRequestOptions
+    userParams: ServiceClientRequestOptions,
+    workerPool?: Piscina
   ): Promise<ServiceClientResponse> {
     const params = { ...this.options.defaultRequestOptions, ...userParams };
 
@@ -636,7 +684,8 @@ export class ServiceClient {
               this,
               params,
               this.options.filters || [],
-              this.options.autoParseJson
+              this.options.autoParseJson,
+              workerPool
             )
               .then((result: ServiceClientResponse) => {
                 success();
@@ -688,6 +737,13 @@ export class ServiceClient {
       wrappedError.retryErrors = retryErrors;
       throw wrappedError;
     });
+  }
+
+  public requestWithWorker(
+    userParams: ServiceClientRequestOptions,
+    workerPool?: Piscina
+  ): Promise<ServiceClientResponse> {
+    return this.request({ ...userParams }, workerPool);
   }
 }
 
