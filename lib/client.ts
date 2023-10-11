@@ -19,6 +19,7 @@ import {
   UserTimeoutError,
   BodyStreamError
 } from "./request";
+import { requestWithWorker } from "./request-worker";
 
 export {
   CircuitBreaker,
@@ -327,7 +328,7 @@ const decodeResponse = (
     try {
       response.body = JSON.parse(response.body);
     } catch (error) {
-      throw new BodyParseError(error, response, client.name);
+      throw new BodyParseError(error as Error, response, client.name);
     }
   }
   return response;
@@ -352,10 +353,10 @@ const requestWithFilters = (
   client: ServiceClient,
   requestOptions: ServiceClientRequestOptions,
   filters: ServiceClientRequestFilter[],
-  autoParseJson: boolean
+  autoParseJson: boolean,
+  enableWorkers = false
 ): Promise<ServiceClientResponse> => {
   const pendingResponseFilters: ServiceClientRequestFilter[] = [];
-
   const requestFilterPromise = filters.reduce(
     (
       promise: Promise<ServiceClientResponse | ServiceClientRequestOptions>,
@@ -381,6 +382,8 @@ const requestWithFilters = (
     .then(paramsOrResponse =>
       paramsOrResponse instanceof ServiceClientResponse
         ? paramsOrResponse
+        : enableWorkers
+        ? requestWithWorker(paramsOrResponse)
         : request(paramsOrResponse).catch((error: RequestError) => {
             if (error instanceof ConnectionTimeoutError) {
               throw new RequestConnectionTimeoutError(error, client.name);
@@ -539,13 +542,13 @@ export class ServiceClient {
         pathname = "/"
       } = url.parse(optionsOrUrl, true);
       options = {
-        hostname,
+        hostname: hostname as any,
         defaultRequestOptions: {
           port,
           protocol,
           query,
           // pathname will be overwritten in actual usage, we just guarantee a sane default
-          pathname
+          pathname: pathname as any
         }
       };
     } else {
@@ -594,7 +597,8 @@ export class ServiceClient {
    * Perform a request to the service using given @{link ServiceClientRequestOptions}, returning the result in a promise.
    */
   public request(
-    userParams: ServiceClientRequestOptions
+    userParams: ServiceClientRequestOptions,
+    enableWorkers = false
   ): Promise<ServiceClientResponse> {
     const params = { ...this.options.defaultRequestOptions, ...userParams };
 
@@ -636,7 +640,8 @@ export class ServiceClient {
               this,
               params,
               this.options.filters || [],
-              this.options.autoParseJson
+              this.options.autoParseJson,
+              enableWorkers
             )
               .then((result: ServiceClientResponse) => {
                 success();
@@ -688,6 +693,12 @@ export class ServiceClient {
       wrappedError.retryErrors = retryErrors;
       throw wrappedError;
     });
+  }
+
+  public requestWithWorker(
+    userParams: ServiceClientRequestOptions
+  ): Promise<ServiceClientResponse> {
+    return this.request({ ...userParams }, true);
   }
 }
 
