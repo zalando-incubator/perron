@@ -1,3 +1,5 @@
+# ATTENTION! This project is not supported anymore.
+
 [![Build Status](https://github.com/zalando-incubator/perron/workflows/CI/badge.svg?branch=master)](https://github.com/zalando-incubator/perron/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
