@@ -200,7 +200,7 @@ export const request = (
 
   if ("pathname" in options && !("path" in options)) {
     if ("query" in options) {
-      let query = querystring.stringify(options.query);
+      let query = querystring.stringify(options.query as any);
       if (query) {
         query = "?" + query;
       }
@@ -234,7 +234,7 @@ export const request = (
     const requestObject = httpRequestFn(options);
     requestObject.setTimeout(readTimeout, () => {
       logEvent(EventSource.HTTP_REQUEST, EventName.TIMEOUT);
-      requestObject.socket.destroy();
+      requestObject.socket?.destroy();
       reject(new ReadTimeoutError(options));
     });
 
